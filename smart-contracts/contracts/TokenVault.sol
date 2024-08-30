@@ -2,7 +2,7 @@
 pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
@@ -30,7 +30,7 @@ contract TokenVault is ReentrancyGuard, Ownable {
      * @dev Sets the token address and transfers ownership to the deployer
      * @param _tokenAddress The address of the ERC-20 token to be managed
      */
-    constructor(address _tokenAddress) Ownable(msg.sender) {
+    constructor(address _tokenAddress){
         token = IERC20(_tokenAddress);
     }
 
