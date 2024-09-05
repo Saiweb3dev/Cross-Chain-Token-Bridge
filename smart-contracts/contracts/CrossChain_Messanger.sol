@@ -8,11 +8,10 @@ import {CCIPReceiver} from "@chainlink/contracts-ccip@1.4.0/src/v0.8/ccip/applic
 import {IERC20} from "@chainlink/contracts-ccip@1.4.0/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@chainlink/contracts-ccip@1.4.0/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/utils/SafeERC20.sol";
 
-/**
- * THIS IS AN EXAMPLE CONTRACT THAT USES HARDCODED VALUES FOR CLARITY.
- * THIS IS AN EXAMPLE CONTRACT THAT USES UN-AUDITED CODE.
- * DO NOT USE THIS CODE IN PRODUCTION.
- */
+interface Vault{
+    function countNumberFromSource(address _from,address _to,uint256 _amount) external;
+    function countNumberFromDestination(address _from,address _to,uint256 _amount) external;
+}
 
 /// @title - A simple messenger contract for sending/receving string data across chains.
 contract Messenger is CCIPReceiver, OwnerIsCreator {
@@ -71,12 +70,14 @@ contract Messenger is CCIPReceiver, OwnerIsCreator {
     mapping(address => bool) public allowlistedSenders;
 
     IERC20 private s_linkToken;
+    Vault private vault;
 
     /// @notice Constructor initializes the contract with the router address.
     /// @param _router The address of the router contract.
     /// @param _link The address of the link contract.
-    constructor(address _router, address _link) CCIPReceiver(_router) {
+    constructor(address _router, address _link,address _vault) CCIPReceiver(_router) {
         s_linkToken = IERC20(_link);
+        vault = Vault(_vault);
     }
 
     /// @dev Modifier that checks if the chain with the given destinationChainSelector is allowlisted.
@@ -169,6 +170,8 @@ contract Messenger is CCIPReceiver, OwnerIsCreator {
         // Send the CCIP message through the router and store the returned CCIP message ID
         messageId = router.ccipSend(_destinationChainSelector, evm2AnyMessage);
 
+        vault.countNumberFromSource(msg.sender, address(this), _amount);
+
         // Emit an event with message details
         emit MessageSent(
             messageId,
@@ -205,6 +208,8 @@ contract Messenger is CCIPReceiver, OwnerIsCreator {
             clientDataMap[client].exists = true;
         }
         clientDataMap[client].amount = amount;
+
+        vault.countNumberFromSource(address(this), client, amount);
 
         emit MessageReceived(
             any2EvmMessage.messageId,
@@ -295,7 +300,6 @@ contract Messenger is CCIPReceiver, OwnerIsCreator {
         IERC20(_token).safeTransfer(_beneficiary, amount);
     }
 
-// Gets all the client address with amount they want to send in destination chain
     function getAllClientData() external view returns (address[] memory, uint256[] memory) {
         uint256[] memory amounts = new uint256[](clientAddresses.length);
         
