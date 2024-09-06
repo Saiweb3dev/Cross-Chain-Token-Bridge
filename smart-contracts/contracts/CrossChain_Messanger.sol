@@ -11,6 +11,8 @@ import {SafeERC20} from "@chainlink/contracts-ccip@1.4.0/src/v0.8/vendor/openzep
 interface Vault{
     function countNumberFromSource(address _from,address _to,uint256 _amount) external;
     function countNumberFromDestination(address _from,address _to,uint256 _amount) external;
+    function locKTokenInVault(address _from,uint256 _amount) external;
+    function releaseTokenInVault(address _to,uint256 _amount) external;
 }
 
 /// @title - A simple messenger contract for sending/receving string data across chains.
@@ -171,6 +173,7 @@ contract Messenger is CCIPReceiver, OwnerIsCreator {
         messageId = router.ccipSend(_destinationChainSelector, evm2AnyMessage);
 
         vault.countNumberFromSource(msg.sender, address(this), _amount);
+        vault.releaseTokenInVault(msg.sender, _amount);
 
         // Emit an event with message details
         emit MessageSent(
@@ -210,6 +213,7 @@ contract Messenger is CCIPReceiver, OwnerIsCreator {
         clientDataMap[client].amount = amount;
 
         vault.countNumberFromSource(address(this), client, amount);
+        vault.releaseTokenInVault(client, amount);
 
         emit MessageReceived(
             any2EvmMessage.messageId,
@@ -242,7 +246,7 @@ contract Messenger is CCIPReceiver, OwnerIsCreator {
                 tokenAmounts: new Client.EVMTokenAmount[](0), // Empty array aas no tokens are transferred
                 extraArgs: Client._argsToBytes(
                     // Additional arguments, setting gas limit
-                    Client.EVMExtraArgsV1({gasLimit: 300_000})
+                    Client.EVMExtraArgsV1({gasLimit: 400_000})
                 ),
                 // Set the feeToken to a feeTokenAddress, indicating specific asset will be used for fees
                 feeToken: _feeTokenAddress
