@@ -31,14 +31,7 @@ error InvalidAddress();
 contract Vault is ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
 
-    // Mapping to track transfer amounts between addresses
-    mapping(address => mapping(address => uint256)) public transferAmounts;
-    // Mapping to track transfer addresses for each address
-    mapping(address => address[]) public transferAddresses;
-
     // Events
-    event CountNumberFromSourceEvent(address indexed from, address indexed to, uint256 amount);
-    event CountNumberFromDestinationEvent(address indexed from, address indexed to, uint256 amount);
     event TokensReleased(address indexed user, uint256 amount);
     event tokenLocked(address indexed _from, uint256 amount);
     event TokensLocked(address indexed user, uint256 amount);
@@ -93,41 +86,4 @@ contract Vault is ReentrancyGuard, Ownable {
         token.mint(_to, _amount);
     }
 
-    /**
-     * @dev Checks if an address is contained in the transfer addresses of another address
-     * @param _address The main address
-     * @param _otherAddress The address to check for
-     * @return bool Returns true if _otherAddress is in the transfer addresses of _address
-     */
-    function containsAddress(address _address, address _otherAddress)
-        internal
-        view
-        returns (bool)
-    {
-        address[] memory addresses = transferAddresses[_address];
-        for (uint256 i = 0; i < addresses.length; i++) {
-            if (addresses[i] == _otherAddress) return true;
-        }
-        return false;
-    }
-
-    /**
-     * @dev Gets the total transfer count from an address
-     * @param _address The address to check
-     * @return uint256 The total transfer count
-     */
-    function getTransferCountFromAddress(address _address)
-        public
-        view
-        returns (uint256)
-    {
-        uint256 totalCount = 0;
-        address[] memory toAddresses = transferAddresses[_address];
-
-        for (uint256 i = 0; i < toAddresses.length; i++) {
-            totalCount += transferAmounts[_address][toAddresses[i]];
-        }
-
-        return totalCount;
-    }
 }
