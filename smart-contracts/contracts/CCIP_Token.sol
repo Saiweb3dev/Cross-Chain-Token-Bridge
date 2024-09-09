@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/security/Pausable.sol";
  * @dev Implementation of the CCIPToken
  * This contract extends ERC20, Ownable, and Pausable functionalities.
  */
-contract CCIPToken is ERC20, Ownable, Pausable {
+contract CCIP_Token is ERC20, Ownable, Pausable {
     // Custom error declarations
     error InvalidAmount(uint256 amount);
     error InsufficientBalance(address account, uint256 balance, uint256 required);
@@ -42,7 +42,6 @@ contract CCIPToken is ERC20, Ownable, Pausable {
      */
     constructor(string memory name, string memory symbol, uint256 __tokenSupply)
         ERC20(name, symbol)
-        Ownable(msg.sender)
     {
         _tokenSupply = __tokenSupply;
         _availableSupply = __tokenSupply;

@@ -47,7 +47,7 @@ contract Vault is ReentrancyGuard, Ownable {
      * @dev Constructor that sets the address of the token contract
      * @param _token Address of the Token contract
      */
-    constructor(address _token) Ownable(msg.sender) {
+    constructor(address _token) {
         require(_token != address(0), "Token address cannot be zero");
         token = Token(_token);
     }
