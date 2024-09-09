@@ -5,7 +5,7 @@ const BACK_END_ABI_FILE = "../backend/contractDetails/tokenContractABI.json";
 const BACK_END_ADDRESS_FILE = "../backend/contractDetails/tokenContractAddress.json";
 
 const main = async () => {
-  if(process.env.UPDATE_FRONT_END){
+  if(process.env.UPDATE_BACK_END){
     console.log("Writing to front end...")
     const contract = await deployments.get("CCIP_Token");
     const contractABI = contract.abi;
@@ -17,7 +17,7 @@ const main = async () => {
   }
   else{
     console.log("NO Permission Given")
-    console.log(process.env.UPDATE_FRONT_END)
+    console.log(process.env.UPDATE_BACK_END)
   }
 }
 
