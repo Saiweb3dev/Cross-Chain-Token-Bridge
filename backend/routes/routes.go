@@ -1,19 +1,15 @@
 package routes
 
 import (
+	"backend/controllers"
 	"github.com/gin-gonic/gin"
-	"backend/controllers"  // Update this import path
 )
 
-func SetupRoutes(r *gin.Engine) {
-	// Ping routes
-	r.GET("/ping", controllers.Ping)
-	r.POST("/echo", controllers.Echo)
-
-	// User routes (example)
-	userGroup := r.Group("/user")
+func SetupRouter() *gin.Engine {
+	router := gin.Default()
+	eventRoutes := router.Group("/events")
 	{
-		userGroup.GET("/:id", controllers.GetUser)
-		userGroup.POST("/", controllers.CreateUser)
+		eventRoutes.POST("/",controllers.HandleContractEvent)
 	}
+	return router
 }
