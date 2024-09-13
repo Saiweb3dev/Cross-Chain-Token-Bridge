@@ -24,7 +24,9 @@ type ContractDetails struct {
 var (
 	contractDetails *ContractDetails
 	infuraURL       string
+	infuraWSURL     string
 )
+
 
 func Init() error {
 
@@ -32,10 +34,12 @@ func Init() error {
 		log.Fatalf("Error loading .env file: %v", err)
 	}
 
-	// Get Infura URL from environment variable
+	// Get Infura URLs from environment variables
 	infuraURL = os.Getenv("INFURA_URL")
-	if infuraURL == "" {
-		return fmt.Errorf("INFURA_URL not set in .env file")
+	infuraWSURL = os.Getenv("INFURA_WEBSOCKET_URL")
+
+	if infuraURL == "" || infuraWSURL == "" {
+		return fmt.Errorf("INFURA_URL or INFURA_WEBSOCKET_URL not set in .env file")
 	}
 
 	var err error
@@ -95,6 +99,11 @@ func loadContractDetails() (*ContractDetails, error) {
 func GetEthereumConnection() (*ethClient.Client, error) {
 	return ethClient.Dial(infuraURL)
 }
+
+func GetEthereumWebSocketConnection() (*ethClient.Client, error) {
+	return ethClient.Dial(infuraWSURL)
+}
+
 
 func ServerAddress() string {
 	return ":8080"
