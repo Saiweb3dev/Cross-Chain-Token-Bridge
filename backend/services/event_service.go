@@ -5,7 +5,9 @@ import (
     "fmt"
     "log"
     "time"
-		
+	"bytes"
+    "encoding/json"
+    "net/http"
 
     "backend/config"
     "github.com/ethereum/go-ethereum"
@@ -14,6 +16,14 @@ import (
     "github.com/ethereum/go-ethereum/core/types"
     "github.com/ethereum/go-ethereum/ethclient"
 )
+
+type EventData struct {
+    CallerAddress   string    `json:"callerAddress"`
+    Event           string    `json:"event"`
+    BlockNumber     uint64    `json:"blockNumber"`
+    TransactionHash string    `json:"transactionHash"`
+    Timestamp       time.Time `json:"timestamp"`
+}
 
 // StartContractEventMonitor is the main function that sets up and runs the Ethereum event monitoring service.
 func StartContractEventMonitor() {
@@ -98,7 +108,6 @@ func listenForEvents(client *ethclient.Client, contractAddress common.Address, c
             return fmt.Errorf("subscription error: %v", err)
         case vLog := <-logs:
 					// Debug: Print the entire log object
-					log.Printf("Received log --> : %+v", vLog)
             go processLog(vLog, contractABI,client)
         }
     }
@@ -141,6 +150,31 @@ func processLog(vLog types.Log, contractABI abi.ABI,client *ethclient.Client) {
     timestamp := time.Now().UTC()
     log.Printf("Timestamp: %s", timestamp.Format(time.RFC3339))
 
+    // Check both data and topics for the caller's address
+    var callerAddress common.Address
+    if len(event.Inputs) > 0 && event.Inputs[0].Name == "from" {
+        // Try to convert the raw data to a string
+        fromString := string(vLog.Data)
+        if len(fromString) == 42 { // Length of a hex-encoded address
+            callerAddress = common.HexToAddress(fromString)
+        }
+    }
+
+    // Check topics for the caller's address
+    if callerAddress == (common.Address{}) {
+        topic := vLog.Topics[1] // Assuming the second topic contains the caller's address
+        if bytes.Equal(topic[:], common.LeftPadBytes([]byte{0x12}, 32)[:]) {
+            // This is a special topic indicating the transaction was sent from an EOA
+            callerAddress = common.BytesToAddress(vLog.TxHash.Bytes()[:20])
+        } else {
+            // Try to extract the address from the topic
+            callerAddress = common.BytesToAddress(topic[:])
+        }
+    }
+
+    log.Printf("Caller Address: %s", callerAddress.String())
+
+
 
     // Unpack the event data based on the ABI definition
     data, err := event.Inputs.Unpack(vLog.Data)
@@ -157,6 +191,43 @@ func processLog(vLog types.Log, contractABI abi.ABI,client *ethclient.Client) {
             log.Printf("%s: %v", input.Name, data[i])
         }
     }
+    eventData := EventData{
+        CallerAddress:   callerAddress.String(),
+        Event:           event.Name,
+        BlockNumber:     vLog.BlockNumber,
+        TransactionHash: vLog.TxHash.Hex(),
+        Timestamp:       time.Now().UTC(),
+    }
+
+    // Log the data being sent to the API
+    log.Printf("Sending event data to API: %+v", eventData)
+
+    err = sendEventDataToAPI(eventData)
+    if err != nil {
+        log.Printf("Failed to send event data to API: %v", err)
+    } else {
+        log.Println("Event data sent to API successfully")
+    }
 
     log.Println("--------------------")
+}
+
+func sendEventDataToAPI(data EventData) error {
+    jsonData, err := json.Marshal(data)
+    if err != nil {
+        return fmt.Errorf("failed to marshal event data: %v", err)
+    }
+
+    resp, err := http.Post("http://localhost:8080/api/events", "application/json", bytes.NewBuffer(jsonData))
+    if err != nil {
+        return fmt.Errorf("failed to send data to API: %v", err)
+    }
+    defer resp.Body.Close()
+
+    if resp.StatusCode != http.StatusOK {
+        return fmt.Errorf("API returned non-OK status: %d", resp.StatusCode)
+    }
+    log.Printf("API response status: %s", resp.Status)
+
+    return nil
 }
