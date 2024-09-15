@@ -5,7 +5,8 @@ import (
 
     "backend/config"
     "backend/routes"
-		"backend/services"
+	"backend/services"
+    "backend/database"
 
 )
 
@@ -16,6 +17,8 @@ func main() {
     }
 
     go services.StartContractEventMonitor()
+
+    database.ConnectToMongoDB()
 
     // Setup and run the HTTP server
     r := routes.SetupRouter()
