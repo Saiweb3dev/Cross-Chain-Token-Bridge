@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -50,15 +49,17 @@ func HandleContractEvent(c *gin.Context) {
 	filter := bson.M{"id": eventData.ID}
 	update := bson.M{
 		"$set": bson.M{
-			"id":                 eventData.ID,
-			"contract_address":   eventData.ContractAddress,
-			"event_name":         eventData.EventName,
-			"caller_address":     eventData.CallerAddress,
-			"block_number":       eventData.BlockNumber,
-			"transaction_hash":   eventData.TransactionHash,
-			"timestamp":          eventData.Timestamp,
-			"created_at":          time.Now(),
-			"updated_at":          time.Now(),
+			"id":               eventData.ID,
+			"contract_address": eventData.ContractAddress,
+			"event_name":       eventData.EventName,
+			"caller_address":   eventData.CallerAddress,
+			"block_number":     eventData.BlockNumber,
+			"transaction_hash": eventData.TransactionHash,
+			"timestamp":        eventData.Timestamp,
+			"amount_from_event": eventData.AmountFromEvent,
+			"to_from_event":     eventData.ToFromEvent,
+			"created_at":       eventData.CreatedAt,
+			"updated_at":       eventData.UpdatedAt,
 		},
 	}
 
@@ -157,7 +158,7 @@ func sanitizeCollectionName(name string) string {
 	name = strings.ReplaceAll(name, "-", "_")
 
 	// Convert to lowercase
-	return fmt.Sprintf("address_%s_events", name)
+	return strings.ToLower(name)
 }
 
 // Returns performance metrics

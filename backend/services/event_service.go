@@ -1,233 +1,292 @@
 package services
 
 import (
-    "context"
-    "fmt"
-    "log"
-    "time"
 	"bytes"
-    "encoding/json"
-    "net/http"
+	"context"
+	"encoding/json"
+	"fmt"
+	"log"
+	"math/big"
+	"net/http"
+	"time"
 
-    "backend/config"
-    "github.com/ethereum/go-ethereum"
-    "github.com/ethereum/go-ethereum/accounts/abi"
-    "github.com/ethereum/go-ethereum/common"
-    "github.com/ethereum/go-ethereum/core/types"
-    "github.com/ethereum/go-ethereum/ethclient"
+	"backend/config"
+
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient"
 )
 
+// EventData represents the structure of event data to be sent to the API
 type EventData struct {
-    CallerAddress   string    `json:"callerAddress"`
-    Event           string    `json:"event"`
-    BlockNumber     uint64    `json:"blockNumber"`
-    TransactionHash string    `json:"transactionHash"`
-    Timestamp       time.Time `json:"timestamp"`
+	ID               string    `json:"id"`
+	CallerAddress    string    `json:"caller_address"`
+	EventName        string    `json:"event_name"`
+	ContractAddress  string    `json:"contract_address"`
+	BlockNumber      uint64    `json:"block_number"`
+	TransactionHash  string    `json:"transaction_hash"`
+	Timestamp        time.Time `json:"timestamp"`
+	AmountFromEvent  string    `json:"amount_from_event"`
+	ToFromEvent      string    `json:"to_from_event"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
 }
 
-// StartContractEventMonitor is the main function that sets up and runs the Ethereum event monitoring service.
+// StartContractEventMonitor initializes and runs the Ethereum event monitoring service
 func StartContractEventMonitor() {
-    go func() {
-        maxRetries := 5
-        retryDelay := 5 * time.Second
-
-        // Loop until we successfully connect to the Ethereum node
-        for attempt := 0; ; attempt++ {
-            // Attempt to create a new Ethereum client connection
-            client, err := config.GetEthereumWebSocketConnection()
-            if err != nil {
-                log.Printf("Attempt %d failed to connect: %v", attempt+1, err)
-                if attempt >= maxRetries {
-                    log.Fatalf("Max retries reached. Unable to establish WebSocket connection.")
-                }
-                time.Sleep(retryDelay)
-                continue
-            }
-
-            // Verify the connection by checking the network ID
-            networkID, err := client.NetworkID(context.Background())
-            if err != nil {
-                log.Printf("Attempt %d failed to verify connection: %v", attempt+1, err)
-                client.Close()
-                time.Sleep(retryDelay)
-                continue
-            }
-
-            log.Printf("Successfully connected to Ethereum node (Network ID: %s)", networkID.String())
-
-            // Get contract details from configuration
-            contractDetails := config.GetContractDetails()
-            if contractDetails == nil {
-                log.Println("Contract details not available")
-                time.Sleep(5 * time.Second)
-                continue
-            }
-
-            // Check for the specific contract address we're interested in
-            contractAddress, ok := contractDetails.Addresses["80002"]
-            if !ok {
-                log.Println("Polygon Mumbai testnet address not found")
-                time.Sleep(5 * time.Second)
-                continue
-            }
-
-            // Start listening for events on the specified contract
-            err = listenForEvents(client, contractAddress, contractDetails.ABI)
-            if err != nil {
-                log.Printf("Error listening for events: %v", err)
-                client.Close()
-                time.Sleep(retryDelay)
-                continue
-            }
-
-            break // Exit the loop if successful
-        }
-    }()
+	go monitorEvents()
 }
 
-// listenForEvents sets up a subscription to filter logs for a specific contract address
+// monitorEvents attempts to connect to the Ethereum node and listen for events
+func monitorEvents() {
+	maxRetries := 5
+	retryDelay := 5 * time.Second
+
+	for attempt := 0; ; attempt++ {
+		// Attempt to connect to Ethereum node
+		client, err := connectToEthereumNode()
+		if err != nil {
+			handleConnectionError(err, attempt, maxRetries, retryDelay)
+			continue
+		}
+
+		// Get contract details and start listening for events
+		contractAddress, contractABI, err := getContractDetails()
+		if err != nil {
+			log.Println(err)
+			time.Sleep(retryDelay)
+			continue
+		}
+
+		err = listenForEvents(client, contractAddress, contractABI)
+		if err != nil {
+			log.Printf("Error listening for events: %v", err)
+			client.Close()
+			time.Sleep(retryDelay)
+			continue
+		}
+
+		break // Exit the loop if successful
+	}
+}
+
+// connectToEthereumNode establishes a connection to the Ethereum node
+func connectToEthereumNode() (*ethclient.Client, error) {
+	client, err := config.GetEthereumWebSocketConnection()
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect: %v", err)
+	}
+
+	// Verify connection by checking network ID
+	_, err = client.NetworkID(context.Background())
+	if err != nil {
+		client.Close()
+		return nil, fmt.Errorf("failed to verify connection: %v", err)
+	}
+
+	return client, nil
+}
+
+// handleConnectionError logs the error and exits if max retries are reached
+func handleConnectionError(err error, attempt, maxRetries int, retryDelay time.Duration) {
+	log.Printf("Attempt %d failed: %v", attempt+1, err)
+	if attempt >= maxRetries {
+		log.Fatalf("Max retries reached. Unable to establish connection.")
+	}
+	time.Sleep(retryDelay)
+}
+
+// getContractDetails retrieves contract address and ABI from configuration
+func getContractDetails() (common.Address, abi.ABI, error) {
+	contractDetails := config.GetContractDetails()
+	if contractDetails == nil {
+		return common.Address{}, abi.ABI{}, fmt.Errorf("contract details not available")
+	}
+
+	contractAddress, ok := contractDetails.Addresses["80002"]
+	if !ok {
+		return common.Address{}, abi.ABI{}, fmt.Errorf("Polygon Mumbai testnet address not found")
+	}
+
+	return contractAddress, contractDetails.ABI, nil
+}
+
+// listenForEvents sets up a subscription to filter logs for the contract
 func listenForEvents(client *ethclient.Client, contractAddress common.Address, contractABI abi.ABI) error {
-    // Create a filter query to listen only to events from the specified contract
-    query := ethereum.FilterQuery{
-        Addresses: []common.Address{contractAddress},
-    }
+	query := ethereum.FilterQuery{
+		Addresses: []common.Address{contractAddress},
+	}
 
-    // Create a channel to receive logged events
-    logs := make(chan types.Log)
-    // Subscribe to filtered logs
-    sub, err := client.SubscribeFilterLogs(context.Background(), query, logs)
-    if err != nil {
-        return fmt.Errorf("failed to subscribe to logs: %v", err)
-    }
-    defer sub.Unsubscribe() // Ensure we unsubscribe when done
+	logs := make(chan types.Log)
+	sub, err := client.SubscribeFilterLogs(context.Background(), query, logs)
+	if err != nil {
+		return fmt.Errorf("failed to subscribe to logs: %v", err)
+	}
+	defer sub.Unsubscribe()
 
-    // Continuously process incoming logs
-    for {
-        select {
-        case err := <-sub.Err():
-            return fmt.Errorf("subscription error: %v", err)
-        case vLog := <-logs:
-					// Debug: Print the entire log object
-            go processLog(vLog, contractABI,client)
-        }
-    }
+	for {
+		select {
+		case err := <-sub.Err():
+			return fmt.Errorf("subscription error: %v", err)
+		case vLog := <-logs:
+			go processLog(vLog, contractABI)
+		}
+	}
 }
 
-// processLog takes a single log entry and processes it according to the contract ABI
-func processLog(vLog types.Log, contractABI abi.ABI,client *ethclient.Client) {
-    // Get the event type from the log topics
-    event, err := contractABI.EventByID(vLog.Topics[0])
-    if err != nil {
-        log.Printf("Failed to get event: %v", err)
-        return
-    }
+// processLog handles a single log entry according to the contract ABI
+func processLog(vLog types.Log, contractABI abi.ABI) {
+	event, err := contractABI.EventByID(vLog.Topics[0])
+	if err != nil {
+		log.Printf("Failed to get event: %v", err)
+		return
+	}
 
-		// Fetch the full transaction details
-    tx, isPending, err := client.TransactionByHash(context.Background(), vLog.TxHash)
-    if err != nil {
-        log.Printf("Failed to fetch transaction details: %v", err)
-        return
-    }
+	callerAddress := getCallerAddress(event, vLog)
+	log.Printf("Caller Address: %s", callerAddress.String())
 
-		log.Printf("______________________________")
+	processedInputs := processEventInputs(event, vLog)
+	log.Printf("Processed Event Inputs: %+v", processedInputs)
 
-		log.Printf("Transaction Hash: %s", vLog.TxHash.Hex())
-    log.Printf("Is Pending: %t", isPending)
-    log.Printf("Nonce: %d", tx.Nonce())
-    log.Printf("Gas Price: %s", tx.GasPrice())
-    log.Printf("Value: %s", tx.Value())
-    log.Printf("Input: %x", tx.Data())
+	eventData := createEventData(vLog, event, callerAddress, processedInputs)
+	logEventData(eventData)
 
-		log.Printf("______________________________")
+	if eventData.EventName != "Transfer" {
+		sendEventDataToAPI(eventData)
+	} else {
+		log.Println("Transfer event detected. Skipping API call.")
+	}
 
-    // Log basic event information
-    log.Printf("Event: %s", event.Name)
-    log.Printf("Block Number: %d", vLog.BlockNumber)
-    log.Printf("Transaction Hash: %s", vLog.TxHash.Hex())
-    log.Printf("Log Index: %d", vLog.Index)
-    
-    // Log current timestamp
-    timestamp := time.Now().UTC()
-    log.Printf("Timestamp: %s", timestamp.Format(time.RFC3339))
-
-    // Check both data and topics for the caller's address
-    var callerAddress common.Address
-    if len(event.Inputs) > 0 && event.Inputs[0].Name == "from" {
-        // Try to convert the raw data to a string
-        fromString := string(vLog.Data)
-        if len(fromString) == 42 { // Length of a hex-encoded address
-            callerAddress = common.HexToAddress(fromString)
-        }
-    }
-
-    // Check topics for the caller's address
-    if callerAddress == (common.Address{}) {
-        topic := vLog.Topics[1] // Assuming the second topic contains the caller's address
-        if bytes.Equal(topic[:], common.LeftPadBytes([]byte{0x12}, 32)[:]) {
-            // This is a special topic indicating the transaction was sent from an EOA
-            callerAddress = common.BytesToAddress(vLog.TxHash.Bytes()[:20])
-        } else {
-            // Try to extract the address from the topic
-            callerAddress = common.BytesToAddress(topic[:])
-        }
-    }
-
-    log.Printf("Caller Address: %s", callerAddress.String())
-
-
-
-    // Unpack the event data based on the ABI definition
-    data, err := event.Inputs.Unpack(vLog.Data)
-    if err != nil {
-        log.Printf("Failed to unpack event data: %v", err)
-        return
-    }
-
-    // Log each field of the event
-    for i, input := range event.Inputs {
-        if i >= len(data) {
-            log.Printf("%s: (no value)", input.Name)
-        } else {
-            log.Printf("%s: %v", input.Name, data[i])
-        }
-    }
-    eventData := EventData{
-        CallerAddress:   callerAddress.String(),
-        Event:           event.Name,
-        BlockNumber:     vLog.BlockNumber,
-        TransactionHash: vLog.TxHash.Hex(),
-        Timestamp:       time.Now().UTC(),
-    }
-
-    // Log the data being sent to the API
-    log.Printf("Sending event data to API: %+v", eventData)
-
-    err = sendEventDataToAPI(eventData)
-    if err != nil {
-        log.Printf("Failed to send event data to API: %v", err)
-    } else {
-        log.Println("Event data sent to API successfully")
-    }
-
-    log.Println("--------------------")
+	log.Println("--------------------")
 }
 
-func sendEventDataToAPI(data EventData) error {
-    jsonData, err := json.Marshal(data)
-    if err != nil {
-        return fmt.Errorf("failed to marshal event data: %v", err)
-    }
+// getCallerAddress extracts the caller's address from the log
+func getCallerAddress(event *abi.Event, vLog types.Log) common.Address {
+	if len(event.Inputs) > 0 && event.Inputs[0].Name == "from" {
+		fromString := string(vLog.Data)
+		if len(fromString) == 42 {
+			return common.HexToAddress(fromString)
+		}
+	}
 
-    resp, err := http.Post("http://localhost:8080/api/events", "application/json", bytes.NewBuffer(jsonData))
-    if err != nil {
-        return fmt.Errorf("failed to send data to API: %v", err)
-    }
-    defer resp.Body.Close()
+	topic := vLog.Topics[1]
+	if bytes.Equal(topic[:], common.LeftPadBytes([]byte{0x12}, 32)[:]) {
+		return common.BytesToAddress(vLog.TxHash.Bytes()[:20])
+	}
+	return common.BytesToAddress(topic[:])
+}
 
-    if resp.StatusCode != http.StatusOK {
-        return fmt.Errorf("API returned non-OK status: %d", resp.StatusCode)
-    }
-    log.Printf("API response status: %s", resp.Status)
+// createEventData creates an EventData struct from log information
+func createEventData(vLog types.Log, event *abi.Event, callerAddress common.Address, processedInputs map[string]interface{}) EventData {
+	eventData := EventData{
+		ID:               fmt.Sprintf("%x", vLog.TxHash),
+		CallerAddress:    callerAddress.String(),
+		EventName:        event.Name,
+		ContractAddress:  vLog.Address.Hex(),
+		BlockNumber:      vLog.BlockNumber,
+		TransactionHash:  vLog.TxHash.Hex(),
+		Timestamp:        time.Now().UTC(),
+		CreatedAt:        time.Now().UTC(),
+		UpdatedAt:        time.Now().UTC(),
+	}
 
-    return nil
+	if amount, ok := processedInputs["amount"].(string); ok {
+		eventData.AmountFromEvent = amount
+	}
+	if to, ok := processedInputs["to"].(string); ok {
+		eventData.ToFromEvent = to
+	}
+
+	return eventData
+}
+
+// logEventData logs the specific event data
+func logEventData(eventData EventData) {
+	log.Printf("Event: %s", eventData.EventName)
+	log.Printf("Amount: %s", eventData.AmountFromEvent)
+	log.Printf("To: %s", eventData.ToFromEvent)
+	log.Printf("Sending event data to API: %+v", eventData)
+}
+
+// sendEventDataToAPI sends the event data to the specified API endpoint
+func sendEventDataToAPI(data EventData) {
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		log.Printf("Failed to marshal event data: %v", err)
+		return
+	}
+
+	resp, err := http.Post("http://localhost:8080/api/events", "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		log.Printf("Failed to send data to API: %v", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("API returned non-OK status: %d", resp.StatusCode)
+		return
+	}
+	log.Printf("API response status: %s", resp.Status)
+}
+
+// processEventInputs extracts and processes both indexed and non-indexed event inputs
+func processEventInputs(event *abi.Event, vLog types.Log) map[string]interface{} {
+	result := make(map[string]interface{})
+
+	// Process indexed inputs
+	for i, input := range event.Inputs {
+		if input.Indexed && i+1 < len(vLog.Topics) {
+			result[input.Name] = processIndexedInput(input, vLog.Topics[i+1])
+		}
+	}
+
+	// Process non-indexed inputs
+	if len(vLog.Data) > 0 {
+		nonIndexedData, err := event.Inputs.NonIndexed().Unpack(vLog.Data)
+		if err != nil {
+			log.Printf("Failed to unpack non-indexed data: %v", err)
+			return result
+		}
+
+		nonIndexedIndex := 0
+		for _, input := range event.Inputs {
+			if !input.Indexed && nonIndexedIndex < len(nonIndexedData) {
+				result[input.Name] = processNonIndexedInput(input, nonIndexedData[nonIndexedIndex])
+				nonIndexedIndex++
+			}
+		}
+	}
+
+	return result
+}
+
+// processIndexedInput handles different types of indexed inputs
+func processIndexedInput(input abi.Argument, topic common.Hash) interface{} {
+	switch input.Type.T {
+	case abi.AddressTy:
+		return common.HexToAddress(topic.Hex()).Hex()
+	case abi.UintTy, abi.IntTy:
+		return topic.Big().String()
+	default:
+		return topic.Hex()
+	}
+}
+
+// processNonIndexedInput handles different types of non-indexed inputs
+func processNonIndexedInput(input abi.Argument, value interface{}) interface{} {
+	switch v := value.(type) {
+	case common.Address:
+		return v.Hex()
+	case *big.Int:
+		return v.String()
+	case bool, string:
+		return v
+	case []byte:
+		return fmt.Sprintf("0x%x", v)
+	default:
+		return fmt.Sprintf("%v", v)
+	}
 }
