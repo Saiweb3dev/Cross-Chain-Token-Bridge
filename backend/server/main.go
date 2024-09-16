@@ -16,7 +16,7 @@ func main() {
         log.Fatalf("Failed to initialize config: %v", err)
     }
 
-    go services.StartContractEventMonitor()
+    go services.StartContractEventMonitor("80002")
 
     database.ConnectToMongoDB()
 

@@ -1,0 +1,16 @@
+{
+  "chains": {
+    "80002": {
+      "chain_id": "80002",
+      "rpc_url_env_var": "INFURA_AMOY_URL",
+      "websocket_url_env_var": "INFURA_WEBSOCKET_AMOY_URL",
+      "contract_addr_env": "AMOY_CONTRACT_ADDRESS"
+    },
+    "137": {
+      "chain_id": "137",
+      "rpc_url_env_var": "POLYGON_MAINNET_RPC_URL",
+      "websocket_url_env_var": "POLYGON_MAINNET_WS_URL",
+      "contract_addr_env": "POLYGON_MAINNET_CONTRACT_ADDRESS"
+    }
+  }
+}

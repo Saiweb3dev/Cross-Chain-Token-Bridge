@@ -1,5 +1,3 @@
-// config/config.go
-
 package config
 
 import (
@@ -16,94 +14,130 @@ import (
 	"github.com/joho/godotenv"
 )
 
-type ContractDetails struct {
-	ABI       abi.ABI
-	Addresses map[string]common.Address
+type ChainConfig struct {
+	ChainID         string `json:"chain_id"`
+	RPCURLEnvVar    string `json:"rpc_url_env_var"`
+	WebsocketURLEnv string `json:"websocket_url_env_var"`
+	ContractAddrEnv string `json:"contract_addr_env"`
 }
 
-var (
-	contractDetails *ContractDetails
-	infuraURL       string
-	infuraWSURL     string
-)
+type Config struct {
+	Chains map[string]*ChainConfig `json:"chains"`
+	ABI    abi.ABI                 `json:"-"`
+}
 
+var globalConfig *Config
 
 func Init() error {
-
 	if err := godotenv.Load("../.env"); err != nil {
 		log.Fatalf("Error loading .env file: %v", err)
 	}
 
-	// Get Infura URLs from environment variables
-	infuraURL = os.Getenv("INFURA_URL")
-	infuraWSURL = os.Getenv("INFURA_WEBSOCKET_URL")
-
-	if infuraURL == "" || infuraWSURL == "" {
-		return fmt.Errorf("INFURA_URL or INFURA_WEBSOCKET_URL not set in .env file")
+	configFilePath := os.Getenv("CONFIG_FILE_PATH")
+	if configFilePath == "" {
+		return fmt.Errorf("CONFIG_FILE_PATH not set in .env file")
 	}
 
 	var err error
-	contractDetails, err = loadContractDetails()
-	return err
+	globalConfig, err = loadConfig(configFilePath)
+	if err != nil {
+		return err
+	}
+
+	if err := loadABI(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func GetContractDetails() *ContractDetails {
-	return contractDetails
+func GetChainConfig(chainID string) (*ChainConfig, error) {
+	if globalConfig.Chains == nil {
+		return nil, fmt.Errorf("no chain configurations loaded")
+	}
+	chainConfig, exists := globalConfig.Chains[chainID]
+	if !exists {
+		return nil, fmt.Errorf("configuration for chain %s not found", chainID)
+	}
+	return chainConfig, nil
 }
 
-func loadContractDetails() (*ContractDetails, error) {
+func GetABI() abi.ABI {
+	return globalConfig.ABI
+}
+
+func loadConfig(filePath string) (*Config, error) {
+	configFile, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read config file: %v", err)
+	}
+
+	var config Config
+	if err := json.Unmarshal(configFile, &config); err != nil {
+		return nil, fmt.Errorf("failed to parse config JSON: %v", err)
+	}
+
+	return &config, nil
+}
+
+func loadABI() error {
 	// Get the current working directory
 	wd, err := os.Getwd()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get working directory: %v", err)
+		return fmt.Errorf("failed to get working directory: %v", err)
 	}
 
-	// Construct paths to the JSON files
 	abiPath := filepath.Join(wd, "..", "contractDetails", "tokenContractABI.json")
-	addressPath := filepath.Join(wd, "..", "contractDetails", "tokenContractAddress.json")
 
 	// Read and parse ABI
 	abiFile, err := os.ReadFile(abiPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read ABI file: %v", err)
+		return fmt.Errorf("failed to read ABI file: %v", err)
 	}
 
-	contractAbi, err := abi.JSON(strings.NewReader(string(abiFile)))
+	globalConfig.ABI, err = abi.JSON(strings.NewReader(string(abiFile)))
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse ABI: %v", err)
+		return fmt.Errorf("failed to parse ABI: %v", err)
 	}
 
-	// Read and parse addresses
-	addressFile, err := os.ReadFile(addressPath)
+	return nil
+}
+
+func GetEthereumConnection(chainID string) (*ethClient.Client, error) {
+	config, err := GetChainConfig(chainID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read address file: %v", err)
+		return nil, err
 	}
-
-	var addresses map[string]string
-	if err := json.Unmarshal(addressFile, &addresses); err != nil {
-		return nil, fmt.Errorf("failed to parse address JSON: %v", err)
+	rpcURL := os.Getenv(config.RPCURLEnvVar)
+	if rpcURL == "" {
+		return nil, fmt.Errorf("RPC URL environment variable '%s' not set", config.RPCURLEnvVar)
 	}
-
-	// Convert string addresses to common.Address
-	addressMap := make(map[string]common.Address)
-	for network, addr := range addresses {
-		addressMap[network] = common.HexToAddress(addr)
-	}
-
-	return &ContractDetails{
-		ABI:       contractAbi,
-		Addresses: addressMap,
-	}, nil
+	return ethClient.Dial(rpcURL)
 }
 
-func GetEthereumConnection() (*ethClient.Client, error) {
-	return ethClient.Dial(infuraURL)
+func GetEthereumWebSocketConnection(chainID string) (*ethClient.Client, error) {
+	config, err := GetChainConfig(chainID)
+	if err != nil {
+		return nil, err
+	}
+	wsURL := os.Getenv(config.WebsocketURLEnv)
+	if wsURL == "" {
+		return nil, fmt.Errorf("Websocket URL environment variable '%s' not set", config.WebsocketURLEnv)
+	}
+	return ethClient.Dial(wsURL)
 }
 
-func GetEthereumWebSocketConnection() (*ethClient.Client, error) {
-	return ethClient.Dial(infuraWSURL)
+func GetContractAddress(chainID string) (common.Address, error) {
+	config, err := GetChainConfig(chainID)
+	if err != nil {
+		return common.Address{}, err
+	}
+	addrStr := os.Getenv(config.ContractAddrEnv)
+	if addrStr == "" {
+		return common.Address{}, fmt.Errorf("Contract address environment variable '%s' not set", config.ContractAddrEnv)
+	}
+	return common.HexToAddress(addrStr), nil
 }
-
 
 func ServerAddress() string {
 	return ":8080"

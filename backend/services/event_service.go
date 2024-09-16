@@ -27,33 +27,33 @@ type EventData struct {
 	ContractAddress  string    `json:"contract_address"`
 	BlockNumber      uint64    `json:"block_number"`
 	TransactionHash  string    `json:"transaction_hash"`
-	Timestamp        time.Time `json:"timestamp"`
+	Timestamp        string     `json:"timestamp"`
 	AmountFromEvent  string    `json:"amount_from_event"`
 	ToFromEvent      string    `json:"to_from_event"`
-	CreatedAt        time.Time `json:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at"`
+	CreatedAt        string     `json:"created_at"`
+	UpdatedAt        string     `json:"updated_at"`
 }
 
 // StartContractEventMonitor initializes and runs the Ethereum event monitoring service
-func StartContractEventMonitor() {
-	go monitorEvents()
+func StartContractEventMonitor(chainID string) {
+	go monitorEvents(chainID)
 }
 
 // monitorEvents attempts to connect to the Ethereum node and listen for events
-func monitorEvents() {
+func monitorEvents(chainID string) {
 	maxRetries := 5
 	retryDelay := 5 * time.Second
 
 	for attempt := 0; ; attempt++ {
 		// Attempt to connect to Ethereum node
-		client, err := connectToEthereumNode()
+		client, err := config.GetEthereumWebSocketConnection(chainID)
 		if err != nil {
 			handleConnectionError(err, attempt, maxRetries, retryDelay)
 			continue
 		}
 
 		// Get contract details and start listening for events
-		contractAddress, contractABI, err := getContractDetails()
+		contractAddress, contractABI, err := getContractDetails(chainID)
 		if err != nil {
 			log.Println(err)
 			time.Sleep(retryDelay)
@@ -72,22 +72,6 @@ func monitorEvents() {
 	}
 }
 
-// connectToEthereumNode establishes a connection to the Ethereum node
-func connectToEthereumNode() (*ethclient.Client, error) {
-	client, err := config.GetEthereumWebSocketConnection()
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect: %v", err)
-	}
-
-	// Verify connection by checking network ID
-	_, err = client.NetworkID(context.Background())
-	if err != nil {
-		client.Close()
-		return nil, fmt.Errorf("failed to verify connection: %v", err)
-	}
-
-	return client, nil
-}
 
 // handleConnectionError logs the error and exits if max retries are reached
 func handleConnectionError(err error, attempt, maxRetries int, retryDelay time.Duration) {
@@ -99,18 +83,14 @@ func handleConnectionError(err error, attempt, maxRetries int, retryDelay time.D
 }
 
 // getContractDetails retrieves contract address and ABI from configuration
-func getContractDetails() (common.Address, abi.ABI, error) {
-	contractDetails := config.GetContractDetails()
-	if contractDetails == nil {
-		return common.Address{}, abi.ABI{}, fmt.Errorf("contract details not available")
+func getContractDetails(chainID string) (common.Address, abi.ABI, error) {
+	contractAddress, err := config.GetContractAddress(chainID)
+	if err != nil {
+		return common.Address{}, abi.ABI{}, fmt.Errorf("failed to get contract address: %v", err)
 	}
+	contractABI := config.GetABI()
 
-	contractAddress, ok := contractDetails.Addresses["80002"]
-	if !ok {
-		return common.Address{}, abi.ABI{}, fmt.Errorf("Polygon Mumbai testnet address not found")
-	}
-
-	return contractAddress, contractDetails.ABI, nil
+	return contractAddress, contractABI, nil
 }
 
 // listenForEvents sets up a subscription to filter logs for the contract
@@ -187,9 +167,9 @@ func createEventData(vLog types.Log, event *abi.Event, callerAddress common.Addr
 		ContractAddress:  vLog.Address.Hex(),
 		BlockNumber:      vLog.BlockNumber,
 		TransactionHash:  vLog.TxHash.Hex(),
-		Timestamp:        time.Now().UTC(),
-		CreatedAt:        time.Now().UTC(),
-		UpdatedAt:        time.Now().UTC(),
+		Timestamp:        formatTimestamp(time.Now().UTC()),
+		CreatedAt:        formatTimestamp(time.Now().UTC()),
+		UpdatedAt:        formatTimestamp(time.Now().UTC()),
 	}
 
 	if amount, ok := processedInputs["amount"].(string); ok {
@@ -198,9 +178,16 @@ func createEventData(vLog types.Log, event *abi.Event, callerAddress common.Addr
 	if to, ok := processedInputs["to"].(string); ok {
 		eventData.ToFromEvent = to
 	}
+	
 
 	return eventData
 }
+
+// Helper function to format timestamp
+func formatTimestamp(t time.Time) string {
+	return t.Format("2006-01-02 15:04:05 MST")
+}
+
 
 // logEventData logs the specific event data
 func logEventData(eventData EventData) {
