@@ -22,6 +22,7 @@ import (
 // EventData represents the structure of event data to be sent to the API
 type EventData struct {
 	ID               string    `json:"id"`
+	ChainID          string    `json:"ChainId"`
 	CallerAddress    string    `json:"caller_address"`
 	EventName        string    `json:"event_name"`
 	ContractAddress  string    `json:"contract_address"`
@@ -67,7 +68,7 @@ func monitorEvents(chainID string, contractType string) {
 			continue
 		}
 
-		err = listenForEvents(client, contractAddress, contractABI)
+		err = listenForEvents(client, contractAddress, contractABI,chainID)
 		if err != nil {
 			log.Printf("Error listening for events: %v", err)
 			client.Close()
@@ -91,7 +92,7 @@ func handleConnectionError(err error, attempt, maxRetries int, retryDelay time.D
 
 
 // listenForEvents sets up a subscription to filter logs for the contract
-func listenForEvents(client *ethclient.Client, contractAddress common.Address, contractABI abi.ABI) error {
+func listenForEvents(client *ethclient.Client, contractAddress common.Address, contractABI abi.ABI,chainID string) error {
 	query := ethereum.FilterQuery{
 		Addresses: []common.Address{contractAddress},
 	}
@@ -108,13 +109,13 @@ func listenForEvents(client *ethclient.Client, contractAddress common.Address, c
 		case err := <-sub.Err():
 			return fmt.Errorf("subscription error: %v", err)
 		case vLog := <-logs:
-			go processLog(vLog, contractABI)
+			go processLog(vLog, contractABI,chainID)
 		}
 	}
 }
 
 // processLog handles a single log entry according to the contract ABI
-func processLog(vLog types.Log, contractABI abi.ABI) {
+func processLog(vLog types.Log, contractABI abi.ABI,chainID string) {
 	event, err := contractABI.EventByID(vLog.Topics[0])
 	if err != nil {
 		log.Printf("Failed to get event: %v", err)
@@ -127,7 +128,7 @@ func processLog(vLog types.Log, contractABI abi.ABI) {
 	processedInputs := processEventInputs(event, vLog)
 	log.Printf("Processed Event Inputs: %+v", processedInputs)
 
-	eventData := createEventData(vLog, event, callerAddress, processedInputs)
+	eventData := createEventData(vLog, event, callerAddress, processedInputs,chainID)
 	logEventData(eventData)
 
 	if eventData.EventName != "Transfer" {
@@ -156,9 +157,10 @@ func getCallerAddress(event *abi.Event, vLog types.Log) common.Address {
 }
 
 // createEventData creates an EventData struct from log information
-func createEventData(vLog types.Log, event *abi.Event, callerAddress common.Address, processedInputs map[string]interface{}) EventData {
+func createEventData(vLog types.Log, event *abi.Event, callerAddress common.Address, processedInputs map[string]interface{},chainID string) EventData {
 	eventData := EventData{
 		ID:               fmt.Sprintf("%x", vLog.TxHash),
+		ChainID:               chainID,
 		CallerAddress:    callerAddress.String(),
 		EventName:        event.Name,
 		ContractAddress:  vLog.Address.Hex(),
@@ -188,6 +190,7 @@ func formatTimestamp(t time.Time) string {
 
 // logEventData logs the specific event data
 func logEventData(eventData EventData) {
+	log.Printf("ChainID: %s", eventData.ChainID)
 	log.Printf("Event: %s", eventData.EventName)
 	log.Printf("Amount: %s", eventData.AmountFromEvent)
 	log.Printf("To: %s", eventData.ToFromEvent)

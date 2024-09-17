@@ -6,6 +6,7 @@ import (
 
 type Event struct {
 	ID               string    `json:"id" bson:"id"`
+	ChainID               string    `json:"ChainId" bson:"ChainId"`
 	ContractAddress  string    `json:"contract_address" bson:"contract_address"`
 	EventName        string    `json:"event_name" bson:"event_name"`
 	CallerAddress    string    `json:"caller_address" bson:"caller_address"`

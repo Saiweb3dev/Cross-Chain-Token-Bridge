@@ -49,7 +49,8 @@ func HandleContractEvent(c *gin.Context) {
 	filter := bson.M{"id": eventData.ID}
 	update := bson.M{
 		"$set": bson.M{
-			"id":               eventData.ID,
+			"id":                 eventData.ID,
+			"ChainId":            eventData.ChainID,
 			"contract_address": eventData.ContractAddress,
 			"event_name":       eventData.EventName,
 			"caller_address":   eventData.CallerAddress,
