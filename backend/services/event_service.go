@@ -35,12 +35,12 @@ type EventData struct {
 }
 
 // StartContractEventMonitor initializes and runs the Ethereum event monitoring service
-func StartContractEventMonitor(chainID string) {
-	go monitorEvents(chainID)
+func StartContractEventMonitor(chainID string, contractType string) {
+	go monitorEvents(chainID, contractType)
 }
 
 // monitorEvents attempts to connect to the Ethereum node and listen for events
-func monitorEvents(chainID string) {
+func monitorEvents(chainID string, contractType string) {
 	maxRetries := 5
 	retryDelay := 5 * time.Second
 
@@ -53,9 +53,16 @@ func monitorEvents(chainID string) {
 		}
 
 		// Get contract details and start listening for events
-		contractAddress, contractABI, err := getContractDetails(chainID)
+		contractAddress, err := config.GetContractAddress(chainID)
 		if err != nil {
 			log.Println(err)
+			time.Sleep(retryDelay)
+			continue
+		}
+
+		contractABI, err := config.GetABI(contractType)
+		if err != nil {
+			log.Printf("Error loading ABI for contract type '%s': %v", contractType, err)
 			time.Sleep(retryDelay)
 			continue
 		}
@@ -82,16 +89,6 @@ func handleConnectionError(err error, attempt, maxRetries int, retryDelay time.D
 	time.Sleep(retryDelay)
 }
 
-// getContractDetails retrieves contract address and ABI from configuration
-func getContractDetails(chainID string) (common.Address, abi.ABI, error) {
-	contractAddress, err := config.GetContractAddress(chainID)
-	if err != nil {
-		return common.Address{}, abi.ABI{}, fmt.Errorf("failed to get contract address: %v", err)
-	}
-	contractABI := config.GetABI()
-
-	return contractAddress, contractABI, nil
-}
 
 // listenForEvents sets up a subscription to filter logs for the contract
 func listenForEvents(client *ethclient.Client, contractAddress common.Address, contractABI abi.ABI) error {

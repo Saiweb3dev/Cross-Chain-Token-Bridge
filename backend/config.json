@@ -1,6 +1,6 @@
 {
   "chains": {
-    "11155111 ": {
+    "11155111": {
       "chain_id": "11155111",
       "rpc_url_env_var": "INFURA_SEPOLIA_URL",
       "websocket_url_env_var": "INFURA_WEBSOCKET_SEPOLIA_URL",
@@ -12,7 +12,7 @@
       "websocket_url_env_var": "INFURA_WEBSOCKET_OPTIMISM_T_URL",
       "contract_addr_env": "TOKEN_OPTIMISM_CONTRACT_ADDRESS"
     },
-    "421614 ": {
+    "421614": {
       "chain_id": "421614",
       "rpc_url_env_var": "INFURA_ARBITRUM_T_URL",
       "websocket_url_env_var": "INFURA_WEBSOCKET_ARBITRUM_T_URL",
@@ -36,5 +36,10 @@
       "websocket_url_env_var": "INFURA_WEBSOCKET_AMOY_URL",
       "contract_addr_env": "TOKEN_AMOY_CONTRACT_ADDRESS"
     }
+  },
+  "global_abi_files": {
+    "Token": "tokenContractABI.json",
+    "Vault": "vaultContractABI.json",
+    "Message": "messageContractABI.json"
   }
 }

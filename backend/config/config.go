@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -22,8 +21,8 @@ type ChainConfig struct {
 }
 
 type Config struct {
-	Chains map[string]*ChainConfig `json:"chains"`
-	ABI    abi.ABI                 `json:"-"`
+	Chains           map[string]*ChainConfig `json:"chains"`
+	GlobalABIFiles   map[string]string       `json:"global_abi_files"`
 }
 
 var globalConfig *Config
@@ -44,10 +43,6 @@ func Init() error {
 		return err
 	}
 
-	if err := loadABI(); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -62,45 +57,17 @@ func GetChainConfig(chainID string) (*ChainConfig, error) {
 	return chainConfig, nil
 }
 
-func GetABI() abi.ABI {
-	return globalConfig.ABI
-}
-
-func loadConfig(filePath string) (*Config, error) {
-	configFile, err := os.ReadFile(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read config file: %v", err)
+func GetABI(contractType string) (abi.ABI, error) {
+	if globalConfig.GlobalABIFiles == nil {
+		return abi.ABI{}, fmt.Errorf("global ABI files not found in configuration")
 	}
 
-	var config Config
-	if err := json.Unmarshal(configFile, &config); err != nil {
-		return nil, fmt.Errorf("failed to parse config JSON: %v", err)
+	abiFileName, ok := globalConfig.GlobalABIFiles[contractType]
+	if !ok {
+		return abi.ABI{}, fmt.Errorf("ABI file for contract type '%s' not found in global configuration", contractType)
 	}
 
-	return &config, nil
-}
-
-func loadABI() error {
-	// Get the current working directory
-	wd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("failed to get working directory: %v", err)
-	}
-
-	abiPath := filepath.Join(wd, "..", "contractDetails", "tokenContractABI.json")
-
-	// Read and parse ABI
-	abiFile, err := os.ReadFile(abiPath)
-	if err != nil {
-		return fmt.Errorf("failed to read ABI file: %v", err)
-	}
-
-	globalConfig.ABI, err = abi.JSON(strings.NewReader(string(abiFile)))
-	if err != nil {
-		return fmt.Errorf("failed to parse ABI: %v", err)
-	}
-
-	return nil
+	return loadABI(abiFileName)
 }
 
 func GetEthereumConnection(chainID string) (*ethClient.Client, error) {
@@ -141,4 +108,42 @@ func GetContractAddress(chainID string) (common.Address, error) {
 
 func ServerAddress() string {
 	return ":8080"
+}
+
+func loadConfig(filePath string) (*Config, error) {
+	configFile, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read config file: %v", err)
+	}
+
+	var config Config
+	if err := json.Unmarshal(configFile, &config); err != nil {
+		return nil, fmt.Errorf("failed to parse config JSON: %v", err)
+	}
+
+	return &config, nil
+}
+
+func loadABI(fileName string) (abi.ABI, error) {
+	// Get the current working directory
+	wd, err := os.Getwd()
+	if err != nil {
+		return abi.ABI{}, fmt.Errorf("failed to get working directory: %v", err)
+	}
+
+	abiPath := filepath.Join(wd, "..", "contractDetails", fileName)
+
+	// Read and parse ABI
+	abiFile, err := os.ReadFile(abiPath)
+	if err != nil {
+		return abi.ABI{}, fmt.Errorf("failed to read ABI file: %v", err)
+	}
+
+	var abiJSON abi.ABI
+	err = json.Unmarshal(abiFile, &abiJSON)
+	if err != nil {
+		return abi.ABI{}, fmt.Errorf("failed to parse ABI: %v", err)
+	}
+
+	return abiJSON, nil
 }
