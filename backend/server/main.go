@@ -8,6 +8,8 @@ import (
 	"backend/services"
     "backend/database"
 
+    "github.com/zsais/go-gin-prometheus"
+
 )
 
 func main() {
@@ -22,5 +24,10 @@ func main() {
 
     // Setup and run the HTTP server
     r := routes.SetupRouter()
+
+    // Add prometheus middleware
+    p := ginprometheus.NewPrometheus("gin")
+    p.Use(r)
+    
     r.Run(config.ServerAddress())
 }
