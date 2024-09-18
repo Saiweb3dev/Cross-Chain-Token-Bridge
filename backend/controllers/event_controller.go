@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"strings"
 	"time"
 
 	"backend/database"
@@ -13,87 +12,74 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// Global variables to track performance metrics
 var (
-	totalRequests      int64
+	totalRequests       int64
 	totalProcessingTime time.Duration
 )
 
+func HandleMintEvent(c *gin.Context) {
+	handleEvent(c, "Mint")
+}
 
-// Handles contract event data insertion
-func HandleContractEvent(c *gin.Context) {
-	// Start timing the operation
+func HandleBurnEvent(c *gin.Context) {
+	handleEvent(c, "Burn")
+}
+
+func HandleTokensReleasedEvent(c *gin.Context) {
+	handleEvent(c, "TokensReleased")
+}
+
+func HandleTokensLockedEvent(c *gin.Context) {
+	handleEvent(c, "TokensLocked")
+}
+
+func HandleMessageSentEvent(c *gin.Context) {
+	handleEvent(c, "MessageSent")
+}
+
+func HandleMessageReceivedEvent(c *gin.Context) {
+	handleEvent(c, "MessageReceived")
+}
+
+func handleEvent(c *gin.Context, eventName string) {
 	start := time.Now()
 
-	// Bind incoming JSON data to Event struct
-	var eventData models.Event
+	var eventData models.EventData
 	if err := c.ShouldBindJSON(&eventData); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body", "details": err.Error()})
 		return
 	}
 
-	// Log received event data
-	log.Printf("Received event data: %+v", eventData)
+	eventData.EventName = eventName
+	log.Printf("Received %s event data: %+v", eventName, eventData)
 
-	// Get database connection
 	db := database.GetDatabase()
+	collection := db.Collection("events")
 
-	// Create sanitized collection name
-	collectionName := sanitizeCollectionName(eventData.CallerAddress)
-	collection := db.Collection(collectionName)
+	ensureIndexes(collection)
 
-	// Define filter and update operations
-	filter := bson.M{"id": eventData.ID}
-	update := bson.M{
-		"$set": bson.M{
-			"id":                 eventData.ID,
-			"ChainId":            eventData.ChainID,
-			"contract_address": eventData.ContractAddress,
-			"event_name":       eventData.EventName,
-			"caller_address":   eventData.CallerAddress,
-			"block_number":     eventData.BlockNumber,
-			"transaction_hash": eventData.TransactionHash,
-			"timestamp":        eventData.Timestamp,
-			"amount_from_event": eventData.AmountFromEvent,
-			"to_from_event":     eventData.ToFromEvent,
-			"created_at":       eventData.CreatedAt,
-			"updated_at":       eventData.UpdatedAt,
-		},
-	}
+	now := time.Now()
+	eventData.CreatedAt = now.Format(time.RFC3339Nano)
+eventData.UpdatedAt = now.Format(time.RFC3339Nano)
 
-	// Perform update operation
-	result, err := collection.UpdateOne(
-		context.Background(),
-		filter,
-		update,
-		options.Update().SetUpsert(true),
-	)
-
+	_, err := collection.InsertOne(context.Background(), eventData)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to store event data", "details": err.Error()})
 		return
 	}
 
-	// Log update result
-	log.Printf("Updated %d document(s) in collection %s", result.ModifiedCount, collectionName)
-
-	// Simulate delay (for demonstration purposes only)
-	time.Sleep(time.Millisecond * 10)
-
-	// Log stored data
 	storedData, _ := json.Marshal(eventData)
-	log.Printf("Stored event data in collection %s: %s", collectionName, storedData)
+	log.Printf("Stored %s event data: %s", eventName, storedData)
 
-	// Send success response
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Event data received and stored successfully",
+		"message": eventName + " event data received and stored successfully",
 		"data":    eventData,
 	})
 
-	// Calculate and log performance metrics
 	duration := time.Since(start)
 	totalRequests++
 	totalProcessingTime += duration
@@ -102,39 +88,57 @@ func HandleContractEvent(c *gin.Context) {
 	log.Printf("Average processing time: %v", totalProcessingTime/time.Duration(totalRequests))
 }
 
-// Retrieves the last event data for a given caller address
+func ensureIndexes(collection *mongo.Collection) {
+	ctx := context.Background()
+	indexes := []mongo.IndexModel{
+		{Keys: bson.D{{"event_name", 1}, {"timestamp", -1}}},
+		{Keys: bson.D{{"caller_address", 1}, {"event_name", 1}, {"timestamp", -1}}},
+		{Keys: bson.D{{"chain_id", 1}, {"event_name", 1}, {"timestamp", -1}}},
+		{Keys: bson.D{{"contract_address", 1}, {"event_name", 1}, {"timestamp", -1}}},
+		{Keys: bson.D{{"message_id", 1}}, Options: options.Index().SetSparse(true)},
+		{Keys: bson.D{{"to_from_user", 1}, {"event_name", 1}, {"timestamp", -1}}, Options: options.Index().SetSparse(true)},
+	}
+
+	opts := options.CreateIndexes().SetMaxTime(10 * time.Second)
+
+	_, err := collection.Indexes().CreateMany(ctx, indexes, opts)
+	if err != nil {
+		log.Printf("Error creating indexes: %v", err)
+	} else {
+		log.Println("Indexes created successfully")
+	}
+}
+
 func GetLastEventData(c *gin.Context) {
-	// Extract caller address from URL parameters
 	callerAddress := c.Param("callerAddress")
+	eventName := c.Query("eventName")
+
 	if callerAddress == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Caller address is required"})
 		return
 	}
 
-	// Log the retrieval attempt
-	log.Printf("Retrieving last event data for caller address: %s", callerAddress)
+	log.Printf("Retrieving last event data for caller address: %s, event name: %s", callerAddress, eventName)
 
-	// Get database connection
 	db := database.GetDatabase()
+	collection := db.Collection("events")
 
-	// Create sanitized collection name
-	collectionName := sanitizeCollectionName(callerAddress)
-	collection := db.Collection(collectionName)
+	var lastEventData models.EventData
 
-	// Initialize variable to hold the last event data
-	var lastEventData models.Event
+	filter := bson.M{"caller_address": callerAddress}
+	if eventName != "" {
+		filter["event_name"] = eventName
+	}
 
-	// Find the most recent event
 	err := collection.FindOne(
 		context.Background(),
-		bson.M{"caller_address": callerAddress},
+		filter,
 		options.FindOne().SetSort(bson.M{"timestamp": -1}),
 	).Decode(&lastEventData)
 
-	// Handle potential errors
 	if err != nil {
-		if err.Error() == "mongo: no documents in result" {
-			c.JSON(http.StatusNotFound, gin.H{"error": "No events found for this caller address"})
+		if err == mongo.ErrNoDocuments {
+			c.JSON(http.StatusNotFound, gin.H{"error": "No events found for this caller address and event type"})
 			return
 		}
 		log.Printf("Error retrieving last event data: %v", err)
@@ -142,30 +146,17 @@ func GetLastEventData(c *gin.Context) {
 		return
 	}
 
-	// Marshal and log the retrieved data
 	lastEventDataJSON, _ := json.Marshal(lastEventData)
 	log.Printf("Retrieved last event data: %s", string(lastEventDataJSON))
 
-	// Send the retrieved data
 	c.JSON(http.StatusOK, gin.H{
 		"data": lastEventData,
 	})
 }
 
-// Sanitizes a collection name by replacing invalid characters and converting to lowercase
-func sanitizeCollectionName(name string) string {
-	// Remove dots and hyphens, replace with underscores
-	name = strings.ReplaceAll(name, ".", "_")
-	name = strings.ReplaceAll(name, "-", "_")
-
-	// Convert to lowercase
-	return strings.ToLower(name)
-}
-
-// Returns performance metrics
 func GetPerformanceMetrics(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
-		"totalRequests":        totalRequests,
+		"totalRequests":         totalRequests,
 		"averageProcessingTime": totalProcessingTime / time.Duration(totalRequests),
 	})
 }

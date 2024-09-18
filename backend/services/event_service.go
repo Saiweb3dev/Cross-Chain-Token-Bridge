@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"backend/config"
+	"backend/models"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -19,21 +20,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-// EventData represents the structure of event data to be sent to the API
-type EventData struct {
-	ID               string    `json:"id"`
-	ChainID          string    `json:"ChainId"`
-	CallerAddress    string    `json:"caller_address"`
-	EventName        string    `json:"event_name"`
-	ContractAddress  string    `json:"contract_address"`
-	BlockNumber      uint64    `json:"block_number"`
-	TransactionHash  string    `json:"transaction_hash"`
-	Timestamp        string     `json:"timestamp"`
-	AmountFromEvent  string    `json:"amount_from_event"`
-	ToFromEvent      string    `json:"to_from_event"`
-	CreatedAt        string     `json:"created_at"`
-	UpdatedAt        string     `json:"updated_at"`
-}
 
 // StartContractEventMonitor initializes and runs the Ethereum event monitoring service
 func StartContractEventMonitor(chainID string, contractType string) {
@@ -157,8 +143,8 @@ func getCallerAddress(event *abi.Event, vLog types.Log) common.Address {
 }
 
 // createEventData creates an EventData struct from log information
-func createEventData(vLog types.Log, event *abi.Event, callerAddress common.Address, processedInputs map[string]interface{},chainID string) EventData {
-	eventData := EventData{
+func createEventData(vLog types.Log, event *abi.Event, callerAddress common.Address, processedInputs map[string]interface{},chainID string) models.EventData {
+	eventData := models.EventData{
 		ID:               fmt.Sprintf("%x", vLog.TxHash),
 		ChainID:               chainID,
 		CallerAddress:    callerAddress.String(),
@@ -172,10 +158,10 @@ func createEventData(vLog types.Log, event *abi.Event, callerAddress common.Addr
 	}
 
 	if amount, ok := processedInputs["amount"].(string); ok {
-		eventData.AmountFromEvent = amount
+		eventData.Amount = amount
 	}
 	if to, ok := processedInputs["to"].(string); ok {
-		eventData.ToFromEvent = to
+		eventData.ToFromUser = to
 	}
 	
 
@@ -189,23 +175,43 @@ func formatTimestamp(t time.Time) string {
 
 
 // logEventData logs the specific event data
-func logEventData(eventData EventData) {
+func logEventData(eventData models.EventData) {
 	log.Printf("ChainID: %s", eventData.ChainID)
 	log.Printf("Event: %s", eventData.EventName)
-	log.Printf("Amount: %s", eventData.AmountFromEvent)
-	log.Printf("To: %s", eventData.ToFromEvent)
+	log.Printf("Amount: %s", eventData.Amount)
+	log.Printf("To: %s", eventData.ToFromUser)
 	log.Printf("Sending event data to API: %+v", eventData)
 }
 
 // sendEventDataToAPI sends the event data to the specified API endpoint
-func sendEventDataToAPI(data EventData) {
+func sendEventDataToAPI(data models.EventData) {
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		log.Printf("Failed to marshal event data: %v", err)
 		return
 	}
 
-	resp, err := http.Post("http://localhost:8080/api/events", "application/json", bytes.NewBuffer(jsonData))
+	var endpoint string
+	switch data.EventName {
+	case "Mint":
+		endpoint = "/api/events/mint"
+	case "Burn":
+		endpoint = "/api/events/burn"
+	case "TokensReleased":
+		endpoint = "/api/events/tokens-released"
+	case "TokensLocked":
+		endpoint = "/api/events/tokens-locked"
+	case "MessageSent":
+		endpoint = "/api/events/message-sent"
+	case "MessageReceived":
+		endpoint = "/api/events/message-received"
+	default:
+		log.Printf("Unknown event type: %s", data.EventName)
+		return
+	}
+
+	url := fmt.Sprintf("http://localhost:8080%s", endpoint)
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		log.Printf("Failed to send data to API: %v", err)
 		return

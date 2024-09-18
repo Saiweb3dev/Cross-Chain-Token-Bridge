@@ -13,11 +13,14 @@ func SetupRouter() *gin.Engine {
     // Group all event-related routes under "/api"
     eventRoutes := router.Group("/api")
     {
-        // Route to handle POST requests for storing new event data
-        eventRoutes.POST("/events", controllers.HandleContractEvent)
-        
-        // Route to retrieve the last event data for a specific caller address
+        eventRoutes.POST("/events/mint", controllers.HandleMintEvent)
+        eventRoutes.POST("/events/burn", controllers.HandleBurnEvent)
+        eventRoutes.POST("/events/tokens-released", controllers.HandleTokensReleasedEvent)
+        eventRoutes.POST("/events/tokens-locked", controllers.HandleTokensLockedEvent)
+        eventRoutes.POST("/events/message-sent", controllers.HandleMessageSentEvent)
+        eventRoutes.POST("/events/message-received", controllers.HandleMessageReceivedEvent)
         eventRoutes.GET("/events/:callerAddress/last", controllers.GetLastEventData)
+        eventRoutes.GET("/metrics", controllers.GetPerformanceMetrics)
     }
 
     // Return the configured router
