@@ -1,4 +1,5 @@
 import React from 'react'
+import ConnectBtn from '../wallet/ConnectBtn'
 
 function Navbar() {
   return (
@@ -51,7 +52,7 @@ function Navbar() {
       </ul>
     </div>
     <div className="navbar-end">
-      <a className="btn bg-purple-700 text-white">Connect</a>
+     <ConnectBtn/>
     </div>
   </div>
   )
