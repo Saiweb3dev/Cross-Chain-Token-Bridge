@@ -16,6 +16,7 @@
     "crypto-icons": "^1.0.65",
     "cryptocurrency-icons": "^0.18.1",
     "encoding": "^0.1.13",
+    "ethers": "^6.13.2",
     "framer-motion": "^11.5.4",
     "next": "14.2.12",
     "pino-pretty": "^11.2.2",

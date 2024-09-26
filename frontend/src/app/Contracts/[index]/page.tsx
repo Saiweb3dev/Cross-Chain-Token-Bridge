@@ -1,30 +1,47 @@
-import React from 'react'
+"use client"
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
-const contractData = {
-  Custom_Token: {
-    name: "Custom Token",
-    description: "Bitcoin futures contract allows traders to speculate on the future price of Bitcoin without owning the underlying asset.",
-    details: "Bitcoin is the world's first cryptocurrency and remains the largest by market capitalization. Futures contracts for Bitcoin allow investors to gain exposure to BTC price movements without holding the actual cryptocurrency."
-  },
-  Vault: {
-    name: "Vault",
-    description: "Ethereum futures contract enables traders to bet on the future price of Ether, the native cryptocurrency of the Ethereum network.",
-    details: "Ethereum is a decentralized, open-source blockchain featuring smart contract functionality. ETH futures provide a way for traders to speculate on Ether's price movements or hedge their existing Ethereum holdings."
-  },
-  Router: {
-    name: "Router",
-    description: "Tether futures contract provides a way to trade on the stability of USDT against other cryptocurrencies or fiat currencies.",
-    details: "Tether (USDT) is a stablecoin pegged to the US dollar. USDT futures contracts allow traders to speculate on the stability of USDT or its relationship with other cryptocurrencies."
-  }
+interface ContractData {
+  name: string;
+  description: string;
+  details: string;
+  contractAddress: string;
+  abi: any[];
 }
 
 export default function ContractPage({ params }: { params: { index: string } }) {
-  const contract = contractData[params.index as keyof typeof contractData]
+  const [contract, setContract] = useState<ContractData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  if (!contract) {
-    notFound()
+  useEffect(() => {
+    const fetchContractData = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetch(`/api/contracts/${params.index}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch contract data');
+        }
+        const data = await response.json();
+        setContract(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchContractData();
+  }, [params.index]);
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (error || !contract) {
+    notFound();
   }
 
   return (
@@ -40,7 +57,16 @@ export default function ContractPage({ params }: { params: { index: string } }) 
           <p className="text-gray-600 mb-4">
             {contract.details}
           </p>
-          <Link href="/Contracts" className="text-blue-500 hover:text-blue-600 font-medium">
+          <p className="text-gray-600 mb-4">
+            Contract Address: {contract.contractAddress}
+          </p>
+          <details>
+            <summary className="text-blue-500 hover:text-blue-600 cursor-pointer">View ABI</summary>
+            <pre className="mt-2 p-4 bg-gray-100 rounded overflow-x-auto">
+              {JSON.stringify(contract.abi, null, 2)}
+            </pre>
+          </details>
+          <Link href="/Contracts" className="mt-4 inline-block text-blue-500 hover:text-blue-600 font-medium">
             ← Back to all contracts
           </Link>
         </div>
