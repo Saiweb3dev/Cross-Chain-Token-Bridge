@@ -1,6 +1,6 @@
 import React from 'react'
 import ConnectBtn from '../wallet/ConnectBtn'
-
+import Link from 'next/link'
 function Navbar() {
   return (
     <div className="navbar bg-white text-purple-700">
@@ -23,7 +23,7 @@ function Navbar() {
         <ul
           tabIndex={0}
           className="menu menu-sm dropdown-content bg-base-100 rounded-box z-[1] mt-3 w-52 p-2 shadow">
-          <li><a>Item 1</a></li>
+          <li><Link href="/Contracts">Contracts</Link></li>
           <li>
             <a>Parent</a>
             <ul className="p-2">
@@ -34,11 +34,11 @@ function Navbar() {
           <li><a>Item 3</a></li>
         </ul>
       </div>
-      <a className="btn btn-ghost text-xl">Cross-Chain Token Bridge</a>
+      <Link href="/" className="btn btn-ghost text-xl">Cross-Chain Token Bridge</Link>
     </div>
     <div className="navbar-center hidden lg:flex">
       <ul className="menu menu-horizontal px-1">
-        <li><a>Item 1</a></li>
+      <li><Link href="/Contracts">Contracts</Link></li>
         <li>
           <details>
             <summary>Parent</summary>
