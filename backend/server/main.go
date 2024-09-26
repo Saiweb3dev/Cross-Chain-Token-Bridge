@@ -1,33 +1,22 @@
 package main
 
 import (
-     "log"
-
-    "backend/config"
-    "backend/routes"
-	"backend/services"
-    "backend/database"
-
-    "github.com/zsais/go-gin-prometheus"
-
+	"flag"
+	"log"
+	"backend/server/mainserver"
+	"backend/server/testserver"
 )
 
 func main() {
-    // Initialize config
-    if err := config.Init(); err != nil {
-        log.Fatalf("Failed to initialize config: %v", err)
-    }
+	serverType := flag.String("server", "main", "Specify which server to start (main or test)")
+	flag.Parse()
 
-    go services.StartContractEventMonitor("80002", "Token")
-
-    database.ConnectToMongoDB()
-
-    // Setup and run the HTTP server
-    r := routes.SetupRouter()
-
-    // Add prometheus middleware
-    p := ginprometheus.NewPrometheus("gin")
-    p.Use(r)
-    
-    r.Run(config.ServerAddress())
+	switch *serverType {
+	case "main":
+		mainserver.RunMainServer()
+	case "test":
+		testserver.RunTestServer()
+	default:
+		log.Fatal("Invalid server type specified")
+	}
 }

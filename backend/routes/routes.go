@@ -10,17 +10,21 @@ func SetupRouter() *gin.Engine {
     // Create a new default Gin engine
     router := gin.Default()
 
-    // Group all event-related routes under "/api"
-    eventRoutes := router.Group("/api")
+    // Group all API routes under "/api"
+    apiRoutes := router.Group("/api")
     {
-        eventRoutes.POST("/events/mint", controllers.HandleMintEvent)
-        eventRoutes.POST("/events/burn", controllers.HandleBurnEvent)
-        eventRoutes.POST("/events/tokens-released", controllers.HandleTokensReleasedEvent)
-        eventRoutes.POST("/events/tokens-locked", controllers.HandleTokensLockedEvent)
-        eventRoutes.POST("/events/message-sent", controllers.HandleMessageSentEvent)
-        eventRoutes.POST("/events/message-received", controllers.HandleMessageReceivedEvent)
-        eventRoutes.GET("/events/:callerAddress/last", controllers.GetLastEventData)
-        eventRoutes.GET("/metrics", controllers.GetPerformanceMetrics)
+        // Event routes
+        apiRoutes.POST("/events/mint", controllers.HandleMintEvent)
+        apiRoutes.POST("/events/burn", controllers.HandleBurnEvent)
+        apiRoutes.POST("/events/tokens-released", controllers.HandleTokensReleasedEvent)
+        apiRoutes.POST("/events/tokens-locked", controllers.HandleTokensLockedEvent)
+        apiRoutes.POST("/events/message-sent", controllers.HandleMessageSentEvent)
+        apiRoutes.POST("/events/message-received", controllers.HandleMessageReceivedEvent)
+        apiRoutes.GET("/events/:callerAddress/last", controllers.GetLastEventData)
+        apiRoutes.GET("/metrics", controllers.GetPerformanceMetrics)
+
+        // New contract routes
+        apiRoutes.GET("/contracts/:index", controllers.GetContractData)
     }
 
     // Return the configured router
