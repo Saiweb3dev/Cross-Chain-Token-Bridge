@@ -1,7 +1,5 @@
-"use client"
-import React, { useState, useEffect } from 'react'
+import React from 'react'
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
 
 interface ContractData {
   name: string;
@@ -11,37 +9,40 @@ interface ContractData {
   abi: any[];
 }
 
-export default function ContractPage({ params }: { params: { index: string } }) {
-  const [contract, setContract] = useState<ContractData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+async function getContractData(index: string): Promise<ContractData> {
+  const res = await fetch(`http://localhost:8080/api/contracts/${index}`, { cache: 'no-store' });
+  if (!res.ok) {
+    throw new Error('Failed to fetch contract data');
+  }
+  return res.json();
+}
 
-  useEffect(() => {
-    const fetchContractData = async () => {
-      setIsLoading(true);
-      try {
-        const response = await fetch(`/api/contracts/${params.index}`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch contract data');
-        }
-        const data = await response.json();
-        setContract(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+export default async function ContractPage({ params }: { params: { index: string } }) {
+  let contract: ContractData | null = null;
+  let error: string | null = null;
 
-    fetchContractData();
-  }, [params.index]);
-
-  if (isLoading) {
-    return <div>Loading...</div>;
+  try {
+    contract = await getContractData(params.index);
+  } catch (err) {
+    error = err instanceof Error ? err.message : 'An error occurred';
   }
 
-  if (error || !contract) {
-    notFound();
+  if (error) {
+    return (
+      <div>
+        <p>Error: {error}</p>
+        <Link href="/Contracts">← Back to all contracts</Link>
+      </div>
+    );
+  }
+
+  if (!contract) {
+    return (
+      <div>
+        <p>Contract not found</p>
+        <Link href="/Contracts">← Back to all contracts</Link>
+      </div>
+    );
   }
 
   return (
