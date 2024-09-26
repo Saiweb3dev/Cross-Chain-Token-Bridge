@@ -28,19 +28,25 @@ type Config struct {
 var globalConfig *Config
 
 func Init() error {
-	if err := godotenv.Load("../.env"); err != nil {
-		log.Fatalf("Error loading .env file: %v", err)
-	}
+	err := godotenv.Load(".env")
+    if err != nil {
+        // If not found, try to load from parent directory
+        err = godotenv.Load("../.env")
+        if err != nil {
+            log.Printf("Warning: Error loading .env file: %v", err)
+            // Continue execution even if .env file is not found
+        }
+    }
 
 	configFilePath := os.Getenv("CONFIG_FILE_PATH")
 	if configFilePath == "" {
 		return fmt.Errorf("CONFIG_FILE_PATH not set in .env file")
 	}
 
-	var err error
-	globalConfig, err = loadConfig(configFilePath)
-	if err != nil {
-		return err
+	var loadErr error
+	globalConfig, loadErr = loadConfig(configFilePath)
+	if loadErr != nil {
+		return loadErr
 	}
 
 	return nil
@@ -125,24 +131,30 @@ func loadConfig(filePath string) (*Config, error) {
 }
 
 func loadABI(fileName string) (abi.ABI, error) {
-	// Get the current working directory
-	wd, err := os.Getwd()
-	if err != nil {
-		return abi.ABI{}, fmt.Errorf("failed to get working directory: %v", err)
+	// Try multiple possible locations for the ABI file
+	possiblePaths := []string{
+			filepath.Join(".", "contractDetails", fileName),
+			filepath.Join("..", "contractDetails", fileName),
+			filepath.Join("..", "..", "contractDetails", fileName),
 	}
 
-	abiPath := filepath.Join(wd, "..", "contractDetails", fileName)
+	var abiFile []byte
+	var err error
+	for _, path := range possiblePaths {
+			abiFile, err = os.ReadFile(path)
+			if err == nil {
+					break
+			}
+	}
 
-	// Read and parse ABI
-	abiFile, err := os.ReadFile(abiPath)
 	if err != nil {
-		return abi.ABI{}, fmt.Errorf("failed to read ABI file: %v", err)
+			return abi.ABI{}, fmt.Errorf("failed to read ABI file: %v", err)
 	}
 
 	var abiJSON abi.ABI
 	err = json.Unmarshal(abiFile, &abiJSON)
 	if err != nil {
-		return abi.ABI{}, fmt.Errorf("failed to parse ABI: %v", err)
+			return abi.ABI{}, fmt.Errorf("failed to parse ABI: %v", err)
 	}
 
 	return abiJSON, nil

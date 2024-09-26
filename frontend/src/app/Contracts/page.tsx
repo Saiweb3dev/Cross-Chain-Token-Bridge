@@ -3,9 +3,9 @@ import TokenCard from '@/components/ui/ContractCard'
 
 const contracts = [
   {
-    title: "Custom Token",
+    title: "Token",
     caption: "Bitcoin futures contract allows traders to speculate on the future price of Bitcoin without owning the underlying asset.",
-    href: "/Contracts/Custom_Token"
+    href: "/Contracts/Token"
   },
   {
     title: "Vault",

@@ -1,8 +1,11 @@
 package controllers
 
 import (
+    "fmt"
+    "log"
     "net/http"
     "github.com/gin-gonic/gin"
+    "backend/config"
 )
 
 type ContractData struct {
@@ -16,36 +19,54 @@ type ContractData struct {
 // GetContractData handles GET requests for contract data
 func GetContractData(c *gin.Context) {
     index := c.Param("index")
+    chainID := c.Param("chainID")
 
-    // This is where you'd typically fetch data from a database or other source
-    // For this example, we're using a map to simulate stored data
-    contractDataMap := map[string]ContractData{
-        "Custom_Token": {
-            Name:            "Custom Token",
-            Description:     "Custom Token.",
-            Details:         "Custom Token cryptocurrency.",
-            ContractAddress: "0x1234567890123456789012345678901234567890",
-            ABI:             []string{"function transfer(address to, uint256 amount) public"}, // Simplified ABI for example
-        },
-        "Vault": {
-            Name:            "Vault",
-            Description:     "Vault",
-            Details:         "Vault is a decentralized Vault holdings.",
-            ContractAddress: "0x0987654321098765432109876543210987654321",
-            ABI:             []string{"function deposit(uint256 amount) public"}, // Simplified ABI for example
-        },
-        "Router": {
-            Name:            "Router",
-            Description:     "Router",
-            Details:         "Router is a relationship with other cryptocurrencies.",
-            ContractAddress: "0x1122334455667788990011223344556677889900",
-            ABI:             []string{"function swap(address fromToken, address toToken, uint256 amount) public"}, // Simplified ABI for example
-        },
+    log.Printf("Received request for contract data. Index: %s, ChainID: %s", index, chainID)
+
+    // Fetch ABI and contract address from config
+    abi, err := config.GetABI(index)
+    if err != nil {
+        log.Printf("Failed to fetch ABI: %v", err)
+        c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to fetch ABI: %v", err)})
+        return
     }
 
-    if data, exists := contractDataMap[index]; exists {
-        c.JSON(http.StatusOK, data)
-    } else {
+    contractAddress, err := config.GetContractAddress(chainID)
+    if err != nil {
+        log.Printf("Failed to fetch contract address: %v", err)
+        c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to fetch contract address: %v", err)})
+        return
+    }
+
+    // Prepare the contract data
+    var contractData ContractData
+    switch index {
+    case "Token":
+        contractData = ContractData{
+            Name:        "Token",
+            Description: "A customizable cryptocurrency token.",
+            Details:     "Allows users to mint and burn tokens.",
+        }
+    case "Vault":
+        contractData = ContractData{
+            Name:        "Vault",
+            Description: "A decentralized vault for storing cryptocurrencies.",
+            Details:     "Provides secure storage and withdrawal services.",
+        }
+    case "Router":
+        contractData = ContractData{
+            Name:        "Router",
+            Description: "An automated trading router for swapping cryptocurrencies.",
+            Details:     "Facilitates trades between different token pairs.",
+        }
+    default:
         c.JSON(http.StatusNotFound, gin.H{"error": "Contract not found"})
+        return
     }
+
+    // Set the fetched ABI and contract address
+    contractData.ContractAddress = contractAddress.Hex()
+    contractData.ABI = abi
+    log.Printf("Sending contract data response for %s", index)
+    c.JSON(http.StatusOK, contractData)
 }
