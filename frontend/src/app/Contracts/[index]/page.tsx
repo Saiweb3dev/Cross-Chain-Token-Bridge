@@ -27,17 +27,24 @@ async function getContractData(index: string, chainId: string): Promise<Contract
 }
 
 export default function ContractPage({ params }: { params: { index: string } }) {
-  const chainContext = useChain();
-
-  const CHAIN_ID = chainContext.chainId;
+  const { chainId } = useChain();
   const [contract, setContract] = useState<ContractData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getContractData(params.index, CHAIN_ID)
-      .then(setContract)
-      .catch(err => setError(err instanceof Error ? err.message : 'An error occurred'));
-  }, [params.index]);
+    setLoading(true);
+    setError(null);
+    getContractData(params.index, chainId)
+      .then(data => {
+        setContract(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+        setLoading(false);
+      });
+  }, [params.index, chainId]);
 
   if (error) {
     return <ContractError error={error} />;
@@ -55,7 +62,7 @@ export default function ContractPage({ params }: { params: { index: string } }) 
       className="min-h-screen bg-gradient-to-br from-purple-100 to-purple-200 py-12 px-4 sm:px-6 lg:px-8"
     >
       <div className="max-w-4xl mx-auto space-y-8">
-        <ContractDetails contract={contract} chainId={CHAIN_ID} />
+        <ContractDetails contract={contract} chainId={chainId} />
         <motion.div 
       className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto"
       initial={{ opacity: 0 }}
