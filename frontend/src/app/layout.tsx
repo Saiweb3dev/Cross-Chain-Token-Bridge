@@ -6,6 +6,7 @@ import Navbar from "@/components/ui/Navbar";
 import { WagmiProvider } from "wagmi";
 import { QueryClient,QueryClientProvider } from "@tanstack/react-query";
 import { config } from "../../config";
+import { ChainProvider } from '../contexts/chainContext'
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -36,10 +37,13 @@ export default function RootLayout({
       >
         <WagmiProvider config={config}>
           <QueryClientProvider client={queryClient}>
+       
+        <ChainProvider>
         <Navbar/>
+        {children}
+        </ChainProvider>
         </QueryClientProvider>
         </WagmiProvider>
-        {children}
       </body>
     </html>
   );

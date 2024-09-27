@@ -1,7 +1,11 @@
+"use client"
 import React from 'react'
 import ConnectBtn from '../wallet/ConnectBtn'
 import Link from 'next/link'
+import ChainSwitcher from './ChainSwitcher'
+import { useChain } from '../../contexts/chainContext'
 function Navbar() {
+  const chainContext = useChain();
   return (
     <div className="navbar bg-white text-purple-700">
     <div className="navbar-start">
@@ -51,8 +55,10 @@ function Navbar() {
         <li><a>Item 3</a></li>
       </ul>
     </div>
-    <div className="navbar-end">
+    <div className="navbar-end flex items-center space-x-4">
+    {chainContext && <ChainSwitcher />}
      <ConnectBtn/>
+     
     </div>
   </div>
   )
