@@ -1,5 +1,5 @@
 import React from 'react'
-import TokenCard from '@/components/ui/ContractCard'
+import TokenCard from '@/components/ui/Contract_UI/ContractCard'
 
 const contracts = [
   {
@@ -21,9 +21,9 @@ const contracts = [
 
 export default function ContractsPage() {
   return (
-    <div className="min-h-screen bg-purple-500 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-purple-100 to-purple-200 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-5xl font-extrabold text-white text-center mb-10">
+        <h1 className="text-5xl font-extrabold text-purple-800 text-center mb-10">
           Select Contract to interact
         </h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
