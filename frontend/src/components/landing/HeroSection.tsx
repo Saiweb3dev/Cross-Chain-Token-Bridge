@@ -1,5 +1,5 @@
 import FlickeringGrid from "@/components/magicui/flickering-grid";
-
+import Button from "../ui/Button";
 export function HeroSection() {
   return (
     <div className="relative h-screen rounded-lg w-full bg-background overflow-hidden border">
@@ -19,9 +19,8 @@ export function HeroSection() {
           <span className="block text-lg md:text-xl text-gray-700">
             Seamlessly transfer your custom tokens between multiple blockchains with our secure, fast, and easy-to-use solution. Unlock the full potential of decentralized finance across chains.
           </span>
-          <button className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
-            Try Now !!!
-          </button>
+          <Button text="Get Started" href="/Contracts">
+          </Button>
         </div>
       </div>
     </div>
