@@ -69,16 +69,18 @@ export default function ContractPage({ params }: { params: { index: string } }) 
       animate={{ opacity: 1 }}
       transition={{ staggerChildren: 0.1 }}
     >
-      <ContractFunction 
-        title={`Mint ${contract.name} token`}
-        contractAddress={contract.contractAddress}
-        abi={contract.abi}
-      />
-      <ContractFunction 
-        title={`Burn ${contract.name} token`}
-        contractAddress={contract.contractAddress}
-        abi={contract.abi}
-      />
+       <ContractFunction 
+            title={`Mint ${contract.name} token`}
+            contractAddress={contract.contractAddress}
+            abi={contract.abi}
+            functionName="mint"  // Add this line
+          />
+          <ContractFunction 
+            title={`Burn ${contract.name} token`}
+            contractAddress={contract.contractAddress}
+            abi={contract.abi}
+            functionName="burn"  // Add this line
+          />
     </motion.div>
       </div>
     </motion.div>
