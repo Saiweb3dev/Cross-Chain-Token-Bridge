@@ -3,12 +3,22 @@ package routes
 import (
     "backend/controllers"
     "github.com/gin-gonic/gin"
+     "github.com/gin-contrib/cors"
 )
 
 // SetupRouter sets up the main router for the API
 func SetupRouter() *gin.Engine {
     // Create a new default Gin engine
     router := gin.Default()
+
+    // Configure CORS
+    config := cors.DefaultConfig()
+    config.AllowOrigins = []string{"http://localhost:3000"} // Add your frontend URL here
+    config.AllowMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}
+    config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization"}
+
+    // Use CORS middleware
+    router.Use(cors.New(config))
 
     // Group all API routes under "/api"
     apiRoutes := router.Group("/api")
@@ -24,7 +34,8 @@ func SetupRouter() *gin.Engine {
         apiRoutes.GET("/metrics", controllers.GetPerformanceMetrics)
 
         // New contract routes
-        apiRoutes.GET("/contracts/:index", controllers.GetContractData)
+
+         apiRoutes.GET("/contract/:chainID/:index", controllers.GetContractData)
     }
 
     // Return the configured router
