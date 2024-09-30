@@ -11,7 +11,7 @@ import {SafeERC20} from "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-
 
 /// @title Vault Interface
 /// @notice Interface for interacting with a token vault
-interface Vault {
+interface CCIP_TokenVault {
     /// @notice Lock tokens in the vault
     /// @param _from Address from which tokens are locked
     /// @param _amount Amount of tokens to lock
@@ -25,7 +25,7 @@ interface Vault {
 
 /// @title Messenger Contract
 /// @notice A contract for sending and receiving string data across chains using Chainlink CCIP
-contract Messenger is CCIPReceiver, OwnerIsCreator {
+contract CrossChain_Messanger is CCIPReceiver, OwnerIsCreator {
     using SafeERC20 for IERC20;
 
     /// @notice Struct to store client data
@@ -75,7 +75,7 @@ contract Messenger is CCIPReceiver, OwnerIsCreator {
     mapping(address => bool) public allowlistedSenders;
 
     IERC20 private s_linkToken;
-    Vault private vault;
+    CCIP_TokenVault private vault;
 
     /// @notice Constructor
     /// @param _router The address of the router contract
@@ -83,7 +83,7 @@ contract Messenger is CCIPReceiver, OwnerIsCreator {
     /// @param _vault The address of the vault contract
     constructor(address _router, address _link, address _vault) CCIPReceiver(_router) {
         s_linkToken = IERC20(_link);
-        vault = Vault(_vault);
+        vault = CCIP_TokenVault(_vault);
     }
 
     /// @notice Modifier to check if the destination chain is allowlisted

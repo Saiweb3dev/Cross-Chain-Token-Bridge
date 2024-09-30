@@ -28,7 +28,7 @@ error InvalidAddress();
  * @dev A contract for managing token locking and releasing operations
  * This contract implements ReentrancyGuard and Ownable for security and access control
  */
-contract Vault is ReentrancyGuard, Ownable {
+contract CCIP_TokenVault is ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
 
     // Events
