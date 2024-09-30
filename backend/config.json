@@ -1,45 +1,57 @@
 {
   "chains": {
+    "80002": {
+      "chain_id": "80001",
+      "rpc_url_env_var": "INFURA_AMOY_URL",
+      "websocket_url_env_var": "INFURA_WEBSOCKET_AMOY_URL",
+      "token_contract_addr_env": "TOKEN_AMOY_CONTRACT_ADDRESS",
+      "vault_contract_addr_env": "VAULT_AMOY_CONTRACT_ADDRESS",
+      "router_contract_addr_env": "ROUTER_AMOY_CONTRACT_ADDRESS"
+    },
     "11155111": {
       "chain_id": "11155111",
       "rpc_url_env_var": "INFURA_SEPOLIA_URL",
       "websocket_url_env_var": "INFURA_WEBSOCKET_SEPOLIA_URL",
-      "contract_addr_env": "TOKEN_SEPOLIA_CONTRACT_ADDRESS"
+      "token_contract_addr_env": "TOKEN_SEPOLIA_CONTRACT_ADDRESS",
+      "vault_contract_addr_env": "VAULT_SEPOLIA_CONTRACT_ADDRESS",
+      "router_contract_addr_env": "ROUTER_SEPOLIA_CONTRACT_ADDRESS"
     },
-    "11155420": {
-      "chain_id": "11155420",
+    "420": {
+      "chain_id": "420",
       "rpc_url_env_var": "INFURA_OPTIMISM_T_URL",
       "websocket_url_env_var": "INFURA_WEBSOCKET_OPTIMISM_T_URL",
-      "contract_addr_env": "TOKEN_OPTIMISM_CONTRACT_ADDRESS"
+      "token_contract_addr_env": "TOKEN_OPTIMISM_CONTRACT_ADDRESS",
+      "vault_contract_addr_env": "VAULT_OPTIMISM_CONTRACT_ADDRESS",
+      "router_contract_addr_env": "ROUTER_OPTIMISM_CONTRACT_ADDRESS"
     },
-    "421614": {
-      "chain_id": "421614",
+    "421613": {
+      "chain_id": "421613",
       "rpc_url_env_var": "INFURA_ARBITRUM_T_URL",
       "websocket_url_env_var": "INFURA_WEBSOCKET_ARBITRUM_T_URL",
-      "contract_addr_env": "TOKEN_ARBITRUM_CONTRACT_ADDRESS"
+      "token_contract_addr_env": "TOKEN_ARBITRUM_CONTRACT_ADDRESS",
+      "vault_contract_addr_env": "VAULT_ARBITRUM_CONTRACT_ADDRESS",
+      "router_contract_addr_env": "ROUTER_ARBITRUM_CONTRACT_ADDRESS"
     },
     "43113": {
       "chain_id": "43113",
       "rpc_url_env_var": "INFURA_FUJI_URL",
       "websocket_url_env_var": "INFURA_WEBSOCKET_FUJI_URL",
-      "contract_addr_env": "TOKEN_FUJI_CONTRACT_ADDRESS"
+      "token_contract_addr_env": "TOKEN_FUJI_CONTRACT_ADDRESS",
+      "vault_contract_addr_env": "VAULT_FUJI_CONTRACT_ADDRESS",
+      "router_contract_addr_env": "ROUTER_FUJI_CONTRACT_ADDRESS"
     },
     "97": {
       "chain_id": "97",
       "rpc_url_env_var": "INFURA_BSC_T_URL",
       "websocket_url_env_var": "INFURA_WEBSOCKET_BSC_T_URL",
-      "contract_addr_env": "TOKEN_BSCT_CONTRACT_ADDRESS"
-    },
-    "80002": {
-      "chain_id": "80002",
-      "rpc_url_env_var": "INFURA_AMOY_URL",
-      "websocket_url_env_var": "INFURA_WEBSOCKET_AMOY_URL",
-      "contract_addr_env": "TOKEN_AMOY_CONTRACT_ADDRESS"
+      "token_contract_addr_env": "TOKEN_BSCT_CONTRACT_ADDRESS",
+      "vault_contract_addr_env": "VAULT_BSCT_CONTRACT_ADDRESS",
+      "router_contract_addr_env": "ROUTER_BSCT_CONTRACT_ADDRESS"
     }
   },
   "global_abi_files": {
     "Token": "tokenContractABI.json",
     "Vault": "vaultContractABI.json",
-    "Message": "messageContractABI.json"
+    "Router": "messangerContractABI.json"
   }
 }

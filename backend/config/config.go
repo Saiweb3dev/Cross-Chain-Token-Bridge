@@ -8,16 +8,17 @@ import (
 	"path/filepath"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/common"
 	ethClient "github.com/ethereum/go-ethereum/ethclient"
 	"github.com/joho/godotenv"
 )
 
 type ChainConfig struct {
-	ChainID         string `json:"chain_id"`
-	RPCURLEnvVar    string `json:"rpc_url_env_var"`
-	WebsocketURLEnv string `json:"websocket_url_env_var"`
-	ContractAddrEnv string `json:"contract_addr_env"`
+	ChainID               string `json:"chain_id"`
+	RPCURLEnvVar          string `json:"rpc_url_env_var"`
+	WebsocketURLEnv       string `json:"websocket_url_env_var"`
+	TokenContractAddrEnv  string `json:"token_contract_addr_env"`
+	VaultContractAddrEnv  string `json:"vault_contract_addr_env"`
+	RouterContractAddrEnv string `json:"router_contract_addr_env"`
 }
 
 type Config struct {
@@ -64,13 +65,16 @@ func GetChainConfig(chainID string) (*ChainConfig, error) {
 }
 
 func GetABI(contractType string) (abi.ABI, error) {
-	if globalConfig.GlobalABIFiles == nil {
-		return abi.ABI{}, fmt.Errorf("global ABI files not found in configuration")
-	}
-
-	abiFileName, ok := globalConfig.GlobalABIFiles[contractType]
-	if !ok {
-		return abi.ABI{}, fmt.Errorf("ABI file for contract type '%s' not found in global configuration", contractType)
+	var abiFileName string
+	switch contractType {
+	case "Token":
+			abiFileName = "tokenContractABI.json"
+	case "Vault":
+			abiFileName = "vaultContractABI.json"
+	case "Router":
+			abiFileName = "messangerContractABI.json"
+	default:
+			return abi.ABI{}, fmt.Errorf("unknown contract type: %s", contractType)
 	}
 
 	return loadABI(abiFileName)
@@ -100,16 +104,29 @@ func GetEthereumWebSocketConnection(chainID string) (*ethClient.Client, error) {
 	return ethClient.Dial(wsURL)
 }
 
-func GetContractAddress(chainID string) (common.Address, error) {
+func GetContractAddress(chainID string, contractType string) (string, error) {
 	config, err := GetChainConfig(chainID)
 	if err != nil {
-		return common.Address{}, err
+			return "", err
 	}
-	addrStr := os.Getenv(config.ContractAddrEnv)
+	
+	var envVar string
+	switch contractType {
+	case "Token":
+			envVar = config.TokenContractAddrEnv
+	case "Vault":
+			envVar = config.VaultContractAddrEnv
+	case "Router":
+			envVar = config.RouterContractAddrEnv
+	default:
+			return "", fmt.Errorf("unknown contract type: %s", contractType)
+	}
+	
+	addrStr := os.Getenv(envVar)
 	if addrStr == "" {
-		return common.Address{}, fmt.Errorf("Contract address environment variable '%s' not set", config.ContractAddrEnv)
+			return "", fmt.Errorf("Contract address environment variable '%s' not set", envVar)
 	}
-	return common.HexToAddress(addrStr), nil
+	return addrStr, nil
 }
 
 func ServerAddress() string {

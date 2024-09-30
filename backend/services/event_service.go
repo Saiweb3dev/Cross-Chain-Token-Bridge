@@ -32,37 +32,37 @@ func monitorEvents(chainID string, contractType string) {
 	retryDelay := 5 * time.Second
 
 	for attempt := 0; ; attempt++ {
-		// Attempt to connect to Ethereum node
-		client, err := config.GetEthereumWebSocketConnection(chainID)
-		if err != nil {
-			handleConnectionError(err, attempt, maxRetries, retryDelay)
-			continue
-		}
+			// Attempt to connect to Ethereum node
+			client, err := config.GetEthereumWebSocketConnection(chainID)
+			if err != nil {
+					handleConnectionError(err, attempt, maxRetries, retryDelay)
+					continue
+			}
 
-		// Get contract details and start listening for events
-		contractAddress, err := config.GetContractAddress(chainID)
-		if err != nil {
-			log.Println(err)
-			time.Sleep(retryDelay)
-			continue
-		}
+			// Get contract details and start listening for events
+			contractAddress, err := config.GetContractAddress(chainID, contractType)
+			if err != nil {
+					log.Println(err)
+					time.Sleep(retryDelay)
+					continue
+			}
 
-		contractABI, err := config.GetABI(contractType)
-		if err != nil {
-			log.Printf("Error loading ABI for contract type '%s': %v", contractType, err)
-			time.Sleep(retryDelay)
-			continue
-		}
+			contractABI, err := config.GetABI(contractType)
+			if err != nil {
+					log.Printf("Error loading ABI for contract type '%s': %v", contractType, err)
+					time.Sleep(retryDelay)
+					continue
+			}
 
-		err = listenForEvents(client, contractAddress, contractABI,chainID)
-		if err != nil {
-			log.Printf("Error listening for events: %v", err)
-			client.Close()
-			time.Sleep(retryDelay)
-			continue
-		}
+			err = listenForEvents(client, common.HexToAddress(contractAddress), contractABI, chainID)
+			if err != nil {
+					log.Printf("Error listening for events: %v", err)
+					client.Close()
+					time.Sleep(retryDelay)
+					continue
+			}
 
-		break // Exit the loop if successful
+			break // Exit the loop if successful
 	}
 }
 

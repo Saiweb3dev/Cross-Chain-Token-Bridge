@@ -17,6 +17,7 @@ type ContractData struct {
 }
 
 // GetContractData handles GET requests for contract data
+
 func GetContractData(c *gin.Context) {
     index := c.Param("index")
     chainID := c.Param("chainID")
@@ -31,7 +32,7 @@ func GetContractData(c *gin.Context) {
         return
     }
 
-    contractAddress, err := config.GetContractAddress(chainID)
+    contractAddress, err := config.GetContractAddress(chainID, index)
     if err != nil {
         log.Printf("Failed to fetch contract address: %v", err)
         c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to fetch contract address: %v", err)})
@@ -65,7 +66,7 @@ func GetContractData(c *gin.Context) {
     }
 
     // Set the fetched ABI and contract address
-    contractData.ContractAddress = contractAddress.Hex()
+    contractData.ContractAddress = contractAddress
     contractData.ABI = abi
     log.Printf("Sending contract data response for %s", index)
     c.JSON(http.StatusOK, contractData)
