@@ -1,4 +1,4 @@
-import React, { useState,useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import { useSmartContract } from '../../../hooks/useContractFunction';
@@ -19,43 +19,54 @@ export default function ContractFunction({ title, contractAddress, abi, function
   const [isHovered, setIsHovered] = useState(false);
   const [isSelfMint, setIsSelfMint] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
 
   const { chainId } = useChain();
 
-  // Ensure abi is always an array
-  const { contract, account, sendTransaction, error } = useSmartContract({ address: contractAddress, abi,chainId });
+  const { contract, account, sendTransaction, error } = useSmartContract({ address: contractAddress, abi, chainId });
 
-  useEffect(() => {
-    if (contract) {
-      console.log('Available methods:', Object.keys(contract.methods));
-    }
-  }, [contract]);
+  const isWriteFunction = ['mint', 'burn', 'transfer', 'approve'].includes(functionName);
 
   const handleAction = async () => {
     if (loading) return;
     setLoading(true);
+    setResult(null);
     try {
       const web3 = new Web3(window.ethereum);
-      const amount = web3.utils.toWei(tokenAmount, 'ether');
-      const recipient = isSelfMint ? account : recipientAddress;
-  
+      let args: any[] = [];
+
+      if (isWriteFunction) {
+        const amount = web3.utils.toWei(tokenAmount, 'ether');
+        const recipient = isSelfMint ? account : recipientAddress;
+        args = [recipient, amount];
+      }
+
       console.log('Calling function:', functionName);
-      console.log('Arguments:', recipient, amount);
-  
-      const result = await sendTransaction(functionName, [recipient, amount], { gasLimit: 300000 });
-      console.log('Transaction result:', result);
-  
-      console.log(`${functionName} successful`);
-      // Add success feedback here
+      console.log('Arguments:', args);
+
+      if (isWriteFunction) {
+        const result = await sendTransaction(functionName, args, { gasLimit: 300000 });
+        console.log('Transaction result:', result);
+        setResult('Transaction successful');
+      } else {
+        if (contract) {
+          const result = await contract.methods[functionName]().call();
+          console.log('Read result:', result);
+          if (result !== null && result !== undefined) {
+            setResult(result.toString());
+          } else {
+            setResult('No result');
+          }
+        } else {
+          setResult('Contract not initialized');
+        }
+      }
+
     } catch (err) {
       console.error(`Error in ${functionName}:`, err);
       if (err instanceof Error) {
-        // Add more detailed error handling here
-        if (err.message.includes('Internal JSON-RPC error')) {
-          console.error('Possible contract execution error. Check the contract code and parameters.');
-        }
+        setResult(`Error: ${err.message}`);
       }
-      // Add error handling UI here
     } finally {
       setLoading(false);
     }
@@ -83,54 +94,58 @@ export default function ContractFunction({ title, contractAddress, abi, function
           {title}
         </motion.h2>
         <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
-          <div>
-            <label htmlFor={`tokenAmount-${title}`} className="block text-sm font-medium text-gray-700 mb-1">
-              Token Amount
-            </label>
-            <input
-              type="number"
-              id={`tokenAmount-${title}`}
-              value={tokenAmount}
-              onChange={(e) => setTokenAmount(e.target.value)}
-              className="block text-purple-300 w-full px-3 py-2 rounded-md border border-gray-300 shadow-sm focus:border-purple-500 focus:ring focus:ring-purple-200 focus:ring-opacity-50 transition duration-200"
-              placeholder="Enter amount"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Recipient
-            </label>
-            <div className="flex items-center space-x-2">
-              <button
-                type="button"
-                onClick={() => setIsSelfMint(true)}
-                className={`px-3 py-1 rounded-md text-sm ${isSelfMint ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700'}`}
-              >
-                Self
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsSelfMint(false)}
-                className={`px-3 py-1 rounded-md text-sm ${!isSelfMint ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700'}`}
-              >
-                Other
-              </button>
-            </div>
-          </div>
-          {!isSelfMint && (
-            <div>
-              <label htmlFor={`recipientAddress-${title}`} className="block text-sm font-medium text-gray-700 mb-1">
-                Recipient Address
-              </label>
-              <input
-                type="text"
-                id={`recipientAddress-${title}`}
-                value={recipientAddress}
-                onChange={(e) => setRecipientAddress(e.target.value)}
-                className="block text-purple-300 w-full px-3 py-2 rounded-md border border-gray-300 shadow-sm focus:border-purple-500 focus:ring focus:ring-purple-200 focus:ring-opacity-50 transition duration-200"
-                placeholder="Enter recipient address"
-              />
-            </div>
+          {isWriteFunction && (
+            <>
+              <div>
+                <label htmlFor={`tokenAmount-${title}`} className="block text-sm font-medium text-gray-700 mb-1">
+                  Token Amount
+                </label>
+                <input
+                  type="number"
+                  id={`tokenAmount-${title}`}
+                  value={tokenAmount}
+                  onChange={(e) => setTokenAmount(e.target.value)}
+                  className="block text-purple-300 w-full px-3 py-2 rounded-md border border-gray-300 shadow-sm focus:border-purple-500 focus:ring focus:ring-purple-200 focus:ring-opacity-50 transition duration-200"
+                  placeholder="Enter amount"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Recipient
+                </label>
+                <div className="flex items-center space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsSelfMint(true)}
+                    className={`px-3 py-1 rounded-md text-sm ${isSelfMint ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+                  >
+                    Self
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsSelfMint(false)}
+                    className={`px-3 py-1 rounded-md text-sm ${!isSelfMint ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+                  >
+                    Other
+                  </button>
+                </div>
+              </div>
+              {!isSelfMint && (
+                <div>
+                  <label htmlFor={`recipientAddress-${title}`} className="block text-sm font-medium text-gray-700 mb-1">
+                    Recipient Address
+                  </label>
+                  <input
+                    type="text"
+                    id={`recipientAddress-${title}`}
+                    value={recipientAddress}
+                    onChange={(e) => setRecipientAddress(e.target.value)}
+                    className="block text-purple-300 w-full px-3 py-2 rounded-md border border-gray-300 shadow-sm focus:border-purple-500 focus:ring focus:ring-purple-200 focus:ring-opacity-50 transition duration-200"
+                    placeholder="Enter recipient address"
+                  />
+                </div>
+              )}
+            </>
           )}
           <motion.button
             type="button"
@@ -139,7 +154,7 @@ export default function ContractFunction({ title, contractAddress, abi, function
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
           >
-            {functionName}
+            {isWriteFunction ? functionName : `Get ${functionName}`}
             <motion.div
               className="ml-2"
               initial={{ x: -5, opacity: 0 }}
@@ -150,6 +165,11 @@ export default function ContractFunction({ title, contractAddress, abi, function
             </motion.div>
           </motion.button>
         </form>
+        {result && (
+          <div className="mt-4 p-2 bg-gray-100 rounded-md">
+            <p className="text-sm text-gray-700">{result}</p>
+          </div>
+        )}
       </div>
       <motion.div 
         className="bg-purple-100 px-6 py-4 text-sm text-purple-600"
