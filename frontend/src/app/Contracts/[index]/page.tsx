@@ -7,6 +7,7 @@ import ContractFunction from '@/components/ui/Contract_UI/ContractFunction'
 import ContractError from '@/components/ui/Contract_UI/ContractError'
 import LoadingSpinner from '@/components/ui/LoadSpinner'
 import { useChain } from '@/contexts/chainContext'
+import { contractFunctions, ContractType } from '@/utils/contractFunctions'
 interface ContractData {
   name: string;
   description: string;
@@ -46,6 +47,12 @@ export default function ContractPage({ params }: { params: { index: string } }) 
       });
   }, [params.index, chainId]);
 
+  useEffect(() => {
+    if (contract) {
+      console.log('Contract ABI in parent:', contract.abi);
+    }
+  }, [contract]);
+
   if (error) {
     return <ContractError error={error} />;
   }
@@ -53,6 +60,9 @@ export default function ContractPage({ params }: { params: { index: string } }) 
   if (!contract) {
     return <LoadingSpinner />;
   }
+
+  const contractType = params.index as ContractType;
+  const functions = contractFunctions[contractType] || [];
 
   return (
     <motion.div 
@@ -69,18 +79,15 @@ export default function ContractPage({ params }: { params: { index: string } }) 
       animate={{ opacity: 1 }}
       transition={{ staggerChildren: 0.1 }}
     >
-       <ContractFunction 
-            title={`Mint ${contract.name} token`}
-            contractAddress={contract.contractAddress}
-            abi={contract.abi}
-            functionName="mint"  // Add this line
-          />
-          <ContractFunction 
-            title={`Burn ${contract.name} token`}
-            contractAddress={contract.contractAddress}
-            abi={contract.abi}
-            functionName="burn"  // Add this line
-          />
+       {functions.map((functionName) => (
+            <ContractFunction 
+              key={functionName}
+              title={`${functionName} ${contract.name}`}
+              contractAddress={contract.contractAddress}
+              abi={contract.abi}
+              functionName={functionName}
+            />
+          ))}
     </motion.div>
       </div>
     </motion.div>

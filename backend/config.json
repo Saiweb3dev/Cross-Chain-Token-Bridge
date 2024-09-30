@@ -1,7 +1,7 @@
 {
   "chains": {
     "80002": {
-      "chain_id": "80001",
+      "chain_id": "80002",
       "rpc_url_env_var": "INFURA_AMOY_URL",
       "websocket_url_env_var": "INFURA_WEBSOCKET_AMOY_URL",
       "token_contract_addr_env": "TOKEN_AMOY_CONTRACT_ADDRESS",
@@ -16,16 +16,16 @@
       "vault_contract_addr_env": "VAULT_SEPOLIA_CONTRACT_ADDRESS",
       "router_contract_addr_env": "ROUTER_SEPOLIA_CONTRACT_ADDRESS"
     },
-    "420": {
-      "chain_id": "420",
+    "11155420": {
+      "chain_id": "11155420",
       "rpc_url_env_var": "INFURA_OPTIMISM_T_URL",
       "websocket_url_env_var": "INFURA_WEBSOCKET_OPTIMISM_T_URL",
       "token_contract_addr_env": "TOKEN_OPTIMISM_CONTRACT_ADDRESS",
       "vault_contract_addr_env": "VAULT_OPTIMISM_CONTRACT_ADDRESS",
       "router_contract_addr_env": "ROUTER_OPTIMISM_CONTRACT_ADDRESS"
     },
-    "421613": {
-      "chain_id": "421613",
+    "421614": {
+      "chain_id": "421614",
       "rpc_url_env_var": "INFURA_ARBITRUM_T_URL",
       "websocket_url_env_var": "INFURA_WEBSOCKET_ARBITRUM_T_URL",
       "token_contract_addr_env": "TOKEN_ARBITRUM_CONTRACT_ADDRESS",

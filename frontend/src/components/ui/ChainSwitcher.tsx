@@ -12,27 +12,24 @@ type ChainOption = {
 }
 
 const chainOptions: ChainOption[] = [
+  { id: '80002', name: 'Polygon Amoy', caption: 'ID: 80002' },
   { id: '11155111', name: 'Sepolia', caption: 'ID: 11155111' },
-  { id: '80002', name: 'Amoy', caption: 'ID: 80002' },
-  { id: '5', name: 'Goerli', caption: 'ID: 5' },
+  { id: '11155420', name: 'Optimism Sepolia', caption: 'ID: 11155420' },
+  { id: '421614', name: 'Arbitrum Sepolia', caption: 'ID: 421614' },
+  { id: '43113', name: 'Avalanche Fuji', caption: 'ID: 43113' },
+  { id: '97', name: 'BSC Testnet', caption: 'ID: 97' },
 ]
 
 export default function ChainSwitcher() {
-  const chainContext = useChain()
-  const [isOpen, setIsOpen] = useState(false)
-
-  if (!chainContext) {
-    return <div className="animate-pulse bg-gray-200 h-10 w-32 rounded-md"></div>
-  }
-
-  const { chainId, setChainId } = chainContext
-
-  const handleChainSwitch = (newChainId: string) => {
-    setChainId(newChainId)
-    setIsOpen(false)
-  }
-
-  const currentChain = chainOptions.find(option => option.id === chainId) || chainOptions[0]
+    const { chainId, setChainId, isNetworkSwitchRequired, switchNetwork } = useChain();
+    const [isOpen, setIsOpen] = useState(false);
+  
+    const handleChainSwitch = async (newChainId: string) => {
+      await setChainId(newChainId);
+      setIsOpen(false);
+    };
+  
+    const currentChain = chainOptions.find(option => option.id === chainId) || chainOptions[0];
 
   return (
     <div className="relative">
